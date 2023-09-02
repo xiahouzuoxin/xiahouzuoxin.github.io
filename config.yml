@@ -1,6 +1,6 @@
 baseURL: "https://xiahouzuoxin.github.io/" # if your site is in 'https', then make sure your base url isn't written using 'http' otherwise your sitemap would contain http (as opposeed to https) URLs. This would affect Google indexing of your URLs.
 # languageCode: 'en-us'
-title: PaperMod
+title: Monkeyzx
 paginate: 5
 theme: PaperMod
 
@@ -86,7 +86,7 @@ params:
             Hi, this is homepage of Monkeyzx. I’m documenting my learning notes in this blog.
 
     editPost:
-        URL: "https://github.com/xiahouzuoxin/xiahouzuoxin.github.io/content"
+        URL: "https://github.com/xiahouzuoxin/xiahouzuoxin.github.io/blob/master/content"
         Text: "Suggest Changes" # edit text
         appendFilePath: true # to append file path to Edit link
 
