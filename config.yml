@@ -36,8 +36,8 @@ languages:
                 - name: Tags
                   url: tags/
                   weight: 10
-                - name: Github
-                  url: "https://github.com/xiahouzuoxin"
+                # - name: Github
+                #   url: "https://github.com/xiahouzuoxin"
                 - name: LegacyNotes
                   url: "https://github.com/xiahouzuoxin/notes"
 
@@ -84,6 +84,12 @@ params:
         Title: "👏Welcome to Monkeyzx"
         Content: >
             Hi, this is homepage of Monkeyzx. I’m documenting my learning notes in this blog.
+
+    socialIcons:
+        - name: github
+          url: "https://github.com/xiahouzuoxin"
+        - name: zhihu
+          url: "https://www.zhihu.com/people/zuoxin-xiahou"
 
     editPost:
         URL: "https://github.com/xiahouzuoxin/xiahouzuoxin.github.io/blob/master/content"
