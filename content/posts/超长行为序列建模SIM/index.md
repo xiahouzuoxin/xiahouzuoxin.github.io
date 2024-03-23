@@ -1,9 +1,9 @@
 +++
-title = '旧文重读——超长行为序列建模SIM'
+title = '超长行为序列建模SIM'
 date = 2024-03-21T18:00:55+08:00
 draft = false
 math = true
-tags = []
+tags = ['Recommendation', 'Long Behavior Sequence']
 +++
 
 ## 为什么推荐需要超长行为序列？
