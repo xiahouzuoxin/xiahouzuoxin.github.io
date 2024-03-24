@@ -12,13 +12,13 @@ tags = ['Recommendation', 'Long Behavior Sequence']
 
 [End-to-End User Behavior Retrieval in Click-Through Rate Prediction Model](https://arxiv.org/pdf/2108.04468.pdf) 是阿里主搜团队 基于此出发提出了End-to-end Target Attention - ETA，GMV提升3%。我们回到长序列问题本身，为啥不能像DIN/DIEN一样直接对超长序列做target attention——因为inference time吃不消（target attention需要对长序列中的每个item emebedding做inner product）。那么有没有其它方法可以快速从长序列中检索出top-K，又不需要像SIM那样最终要用到比如[faiss](https://github.com/facebookresearch/faiss)做快速的索引？
 
-ETA就想到了[SimHash](https://www.cs.princeton.edu/courses/archive/spr04/cos598B/bib/CharikarEstim.pdf)！
+ETA就想到了[SimHash](https://www.cs.princeton.edu/courses/archive/spr04/cos598B/bib/CharikarEstim.pdf)！__通过将long behavior sequence item embeddings进行SimHash后，就能通过Hamming distance替代掉inner product，从而缓解长序列中inner product所带来的计算量问题__。
 
 ## Embedding SimHash后能快速的进行TopK检索
 
 SimHash算法用于将每个item embedding映射成一个二进制的串（最终可以保存成一个整数），之前主要用于长文本相似度的比较。这里应用SimHash相当于把embedding当作长文本。
 
-SimHash伪代码如下：
+本文使用的SimHash伪代码如下，代码中共进行m次Hash，Hash的width=2即每次Hash返回二值0或1的$sig_k[i]$：
 
 ![1711186472694](image/index/1711186472694.png)
 
@@ -60,6 +60,6 @@ ETA结构左边就是SimHash的应用，具体的：
 
 关于效果：文章中没有和SIM(soft) + timeinfo做对比。SIM主要问题在于检索过程离线embedding的延迟；但ETA有没有自己的问题？当然有，embedding hash过程虽然说是LSH，但或多或少还是存在一些embedding的信息丢失，导致topK检索的精度打些折扣。
 
-| AUC效果 | AB实验效果 |
-| -- | -- |
+| AUC效果                                       | AB实验效果                                    |
+| --------------------------------------------- | --------------------------------------------- |
 | ![1711192499081](image/index/1711192499081.png) | ![1711192782921](image/index/1711192782921.png) |

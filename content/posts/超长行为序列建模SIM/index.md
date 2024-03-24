@@ -46,7 +46,7 @@ $$
 
 > 关于soft-search的item embedding：
 >
-> - 不能使用short behavior sequence的embedding，因为不在一个一个表达空间，embedding差异会比较大；所以才有了上图中左边Soft Search Training；
+> - 不能直接使用short behavior sequence的embedding，因为不在一个表达空间，embedding差异会比较大；所以才有了上图中左边Soft Search Training辅助任务；
 > - Soft Search在原文中是和后面的ESU一起训练，得到behavior item embedding矩阵，线上serving的时候通过类似i2i召回，内积检索得到topK的item；但是，一起训练成本太高，behavior item的长期表达在短期内变化不大，这里是否可以定期离线训练？
 > - soft-search training的技巧：当life long sequential behavior实在太长的时候（内存放不下），可以随机采样子行为序列，对最终item embedding的分布影响不大；
 
@@ -64,7 +64,10 @@ $$
 最终的长时间序列表达为多个head的concat：$U_{lt}=concat(head_1,...,head_q)$，剩下2个问题：
 
 1. 为什么是multi-head？为了从长序列中提取多兴趣，长序列中一般包含多兴趣（比如电子爱好者，同时可能是二次元爱好者）；
-2. $z_b$ 是什么，不是behavior item的embedding $e_b$么？z_b是 `behavior item embedding` 和 `behavior item与target item时间差` 的embedding concat，这里 `behavior item与target item时间差` 这个信息也很重要，从原文实验看，hard-search + timeinfo的提升基本和soft-search相当，千分之二的提升；
+2. $z_b$ 是什么，不是behavior item的embedding $e_b$么？z_b是 `behavior item embedding` 和 `behavior item与target item时间差` 的embedding concat，这里 `behavior item与target item的时间差` 这个timeinfo信息也很重要，从原文实验看，hard-search + timeinfo的提升基本和soft-search相当，千分之二的提升；
+
+   > 题外话：timeinfo是连续or离散的，如果是连续的，怎么embedding呢？
+   >
 
 好了，剩下的就是把 ESU multi-head attention的结果 concat到短时序中进行训练了（soft-search条件允许是联合训练，hard-search部分不涉及训练过程）。
 
@@ -82,3 +85,5 @@ $$
 针对问题2，把用户长行为序列建成KKV索引（Key-Key-Value）——User Behavior Tree，提前存储到数据库，模型在线hard-search直接从数据库中根据Key=user_id, Key=target_category索引得到ESU的输入topK；且通过索引的构建之后，hard-search的O(k)时间复杂度直接缩短到O(1)即在线serving长时序基本没有额外的开销。
 
 ![1711023710900](image/index/1711023710900.png)
+
+另外，其实对于soft-search的上线，检索过程可以完全复用召回倒排索引（Inverted index）的框架。
