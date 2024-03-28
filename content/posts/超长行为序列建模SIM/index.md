@@ -34,9 +34,9 @@ SIM是Two-stage Model， 包括GSU和ESU阶段。注意，主结构中依然保�
 GSU，通过线性时间复杂度，用于从原始超长序列中检索出top-K相关的子行为。文中介绍了两种GSU的方式，soft-search和hard-search。两种搜索的差别主要在序列中的item和目标item的相似度的计算上，
 
 $$
-r_i = \left\\{
+r_i = \left\{
 \begin{aligned}
-sign (C_i=C_a) &    & hard-search \\\
+sign (C_i=C_a) &    & hard-search \\
 (W_be_i) \cdot (W_ae_a)^T &    & soft-search
 \end{aligned}
 \right.
@@ -57,7 +57,7 @@ hard-search或soft-search的topK结果送到后续的ESU。
 ESU就是对TopK做multi-head attention，
 
 $$
-att_{score}^i=softmax(W_{bi}z_b \cdot W_{ai}e_a) \\\
+att_{score}^i=softmax(W_{bi}z_b \cdot W_{ai}e_a) \\
 head_i=att_{score}^i z_b
 $$
 

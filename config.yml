@@ -128,10 +128,24 @@ params:
     #     limit: 10 # refer: https://www.fusejs.io/api/methods.html#search
     #     keys: ["title", "permalink", "summary", "content"]
 
+    math: true
+
 markup:
     goldmark:
         renderer:
             unsafe: true
+        extensions:
+          passthrough:
+            delimiters:
+              block:
+              - - \[
+                - \]
+              - - $$
+                - $$
+              inline:
+              - - \(
+                - \)
+            enable: true
     highlight:
         noClasses: false
         # anchorLineNos: true
