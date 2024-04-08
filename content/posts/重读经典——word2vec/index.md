@@ -1,7 +1,7 @@
 +++
 title = '重读经典——word2vec'
 date = 2024-03-31T15:32:32+08:00
-draft = true
+draft = false
 math = false
 tags = []
 +++
