@@ -64,7 +64,7 @@ $$
 
 到目前为止，已经有了CBOW和Skip-gram的原始优化目标。但是有个很棘手的问题——计算复杂度。假设词表大小是V，隐藏层维度是H，则每次loss计算，softmax的分母就需要$O(V*H^2)$次的乘法，这是不可接受的。为了有效的优化目标，工程实现上有 Hierarchical Softmax 和 Negative Sampling的方法。Hierarchical Softmax在工业界用得不多，Negative Sampling相对更容易实现，所以这里只讨论Negative Sampling。
 
-Negative Sampling一种方式是直接对负样本采样，比如包括自己就5类，直接在5类上计算softmax——Sampled Softmax Loss：
+Negative Sampling的Loss函数，一种方式是直接对负样本采样，比如包括自己就5类，直接在5类上计算softmax——Sampled Softmax Loss：
 
 $$
 Sampled Softmax Loss= \log \frac {e^{v_i \cdot v'_o}}{e^{v_i \cdot v'_o} + \sum_{j \in S_{neg}} e^{v_i \cdot v'_j}}
@@ -74,7 +74,7 @@ $$
 
 $$
 NEG Loss=-log (\frac {1}{1+e^{-v_i \cdot v'_o}}) - \sum_{j \in S_{neg}} log (1 - \frac {1}{1+e^{-v_i \cdot v'_j}}) \\
--log\ \sigma(v_i \cdot v'_o) - \sum_{j \in S_{neg}} log\ \sigma(-v_i \cdot v'_j)
+=-log\ \sigma(v_i \cdot v'_o) - \sum_{j \in S_{neg}} log\ \sigma(-v_i \cdot v'_j)
 $$
 
 其中，
@@ -87,7 +87,7 @@ $$
 $$
 NEGLoss = -\log (\prod_{(w,c) \in D_p} p(D=1|w,c) + \prod_{(w,c') \in D_n} p(D=0|w,c') ] ) \\
 = -\sum_{(w,c) \in D_p} \log \frac{1}{1+e^{-v_c \cdot v_w}} - \sum_{(w,c') \in D_n} \log (1 - \frac{1}{1+e^{-v_c' \cdot v_w}}) \\
-= -\sum_{(w,c) \in D_p} \log \sigma(v_c \cdot v_w) -\sum_{(w,c') \in D_p} \log \sigma(v_c' \cdot v_w)
+= -\sum_{(w,c) \in D_p} \log \sigma(v_c \cdot v_w) -\sum_{(w,c') \in D_n} \log \sigma(v_c' \cdot v_w)
 $$
 
 其中，Dp是正样本集合，Dn是采样的负样本集合。
@@ -104,7 +104,7 @@ $$
 
 其中
 
-- f(w_i)就是词w_i出现的频率。100个词里面出现10词，则=1/10，代表热度）
+- f(w_i)就是词w_i出现的频率。100个词里面出现10词，则=1/10，代表热度；
 - t是一个人工选定的阈值（原文$10^{-5}$）；
 
 ## word2vec与推荐算法
@@ -137,7 +137,7 @@ User-type和Listing-type Embedding也是skip-gram model，然后针对应用场�
 
 [Billion-scale Commodity Embedding for E-commerce Recommendation in Alibaba](https://arxiv.org/pdf/1803.02349.pdf)
 
-将word2vec中文本序列的表达扩展到电商图的表达，在图上随机游走构建item的embedding。
+将word2vec中文本序列的表达扩展到graph的表达，将多个用户的行为序列画在graph上，在graph上随机游走生成新的item序列（类比text context window），根据生成的item序列用Skip-gram学习item embedding表达。
 
 ![1711947825108](image/index/1711947825108.png)
 
