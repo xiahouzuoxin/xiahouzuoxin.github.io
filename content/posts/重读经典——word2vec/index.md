@@ -27,7 +27,7 @@ word2vec核心思想是通过训练神经网络，将word映射到高维embeddin
 
 ![1711874328528](image/index/1711874328528.png)
 
-CBOW是通过上下文（Context）学习当前word，假设词与词之间相互独立，则对应的极大似然学习目标为：
+CBOW是通过上下文（Context）学习当前word（BERT中的完形填空和这个很像），假设词与词之间相互独立，则对应的极大似然学习目标为：
 
 $$
 E=-\log p(w_t|w_{t-1},w_{t-2},..,w_{t-c},w_{t+1},w_{t+2},...,w_{t+c}) \\
@@ -37,20 +37,20 @@ $$
 
 其中，
 
-1. Loss函数使用的Softmax多分类，类目数即为词典大小V（语言模型里面，V大概几万-十万）；
-2. c是context窗口大小，在一个context内就认为相关，是个人工超参数，或根据一定规则动态调整；
+1. c是context窗口大小，在一个context内就是正样本，是个人工超参数，或根据一定规则动态调整；
+2. Loss函数使用的Softmax多分类，类目数即为词典大小V（语言模型里面，V大概几万-十万），即预估中心词是字典中的哪一个；
 3. h是CBOW的隐藏层输出，所有输入$w_{t-1},w_{t-2}...,w_{t+1},w_{t+2}$通过lookup table查到embedding查询得到 $v_{t-1},v_{t-2}...,v_{t+1},v_{t+2}$之后，再进行sum pooling的结果；即$h=1/C*(v_{t-1},v_{t-2},...,v_{t+1},v_{t+2},...)$，C为上下文长度；输入表达矩阵（lookup table）存储的就是word embedding的结果；
-4. v'是输出矩阵表达，注意在word2vec里面，和输入表达矩阵（即lookup table）不一样；
-5. h * v' 点乘运算，可以理解为是输入context的embedding（即sum pooing结果）和输出v'的相似度，最终loss算的是这个相似度的softmax loss；
+4. v'是输出矩阵表达，注意在word2vec里面，和输入表达矩阵（即lookup table）不共享参数（GPT中的Head和输入Lookup Table是共享参数）；
+5. 模型假设 = h * v'：输入表征和预估词表征的点乘运算，可以理解为是输入context的embedding（即sum pooing结果）和输出v'的内积相似度，最终loss算的是这个相似度的softmax loss；
 
-Skip-gram与CBOW相反，它是则根据当前word来学习可能的上下文概率，对应的极大似然估计loss为：
+Skip-gram与CBOW相反，它是则根据当前word来学习可能的上下文概率，对应的极大似然估计目标为：
 
 $$
 E=-\log p(w_{t-1},w_{t-2},...,w_{t-c},w_{t+1},w_{t+2},...,w_{t+c}|w_t) \\
  =-\log p(w_{t-1}|w_t,..,w_{t-c}|w_t,...,w_{t+1}|w_t,...,w_{t+c}|w_t) \\
- =-\log \prod_{i \in C} p(w_i|w_t) \\
- =-\sum_{i \in C} \log \frac{e^{v_i \cdot v'_o} }{\sum_{j \in V} e^{v_i \cdot v'_j }} \\
- =-\sum_{i \in C} e^{v_i \cdot v'_o} + C \log \sum_{j \in V} e^{v_i \cdot v'_j }
+ =-\log \prod_{o \in C} p(w_o|w_t) \\
+ =-\sum_{o \in C} \log \frac{e^{v_i \cdot v'_o} }{\sum_{j \in V} e^{v_i \cdot v'_j }} \\
+ =-\sum_{o \in C} {v_i \cdot v'_o} + C \log \sum_{j \in V} e^{v_i \cdot v'_j }
 $$
 
 其中，
@@ -58,11 +58,12 @@ $$
 1. Loss函数也是使用的Softmax多分类，类目数即为词典大小V；相比CBOW，这里最外层多了对Context的求和，C即为Context；
 2. $v_i$是输入word通过lookup table查到的embedding，没有也无需sum pooling操作，因为skip-gram输入只有一个词；
 3. 同样的，v'是输出矩阵表达，注意在word2vec里面，和输表达入矩阵（即lookup table）不一样；
-4. v_i * v' 点乘运算，可以理解为是当前词的embedding和Context里每个其它的词的embedding计算相似度（注意这里输出词的embedding和输入词不是同一个词表），最终loss算的是这个相似度的softmax loss；
+4. v_i * v' 点乘运算，可以理解为是当前词的embedding和Context里每个词的embedding计算相似度（注意这里输出词的embedding和输入词不是同一个词表）；
+5. 正样本为上下文内的样本，负样本为大词典V中的其他样本，loss函数为softmax。
 
 ### Negative Sampling
 
-到目前为止，已经有了CBOW和Skip-gram的原始优化目标。但是有个很棘手的问题——计算复杂度。假设词表大小是V，隐藏层维度是H，则每次loss计算，softmax的分母就需要$O(V*H^2)$次的乘法，这是不可接受的。为了有效的优化目标，工程实现上有 Hierarchical Softmax 和 Negative Sampling的方法。Hierarchical Softmax在工业界用得不多，Negative Sampling相对更容易实现，所以这里只讨论Negative Sampling。
+到目前为止，已经有了CBOW和Skip-gram的原始优化目标，实际上不管是CBOW还是Skip-gram都是建模成词典大小的softmax多分类问题。但是有个很棘手的问题——计算复杂度。假设词表大小是V，隐藏层维度是H，则每次loss计算，softmax的分母就需要$O(V*H^2)$次的乘法，这是不可接受的。为了有效的优化目标，工程实现上有 Hierarchical Softmax 和 Negative Sampling的方法。Hierarchical Softmax在工业界用得不多，Negative Sampling相对更容易实现，所以这里只讨论Negative Sampling。
 
 Negative Sampling的Loss函数，一种方式是直接对负样本采样，比如包括自己就5类，直接在5类上计算softmax——Sampled Softmax Loss：
 
