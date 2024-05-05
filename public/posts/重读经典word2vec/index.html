@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en" dir="auto">
+
+<head><script src="/livereload.js?mindelay=10&amp;v=2&amp;port=1313&amp;path=livereload" data-no-instant defer></script><meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<meta name="robots" content="index, follow">
+<title>重读经典——word2vec | Monkeyzx</title>
+<meta name="keywords" content="">
+<meta name="description" content="为什么需要重读word2vec Word2vec原论文：
+Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. Efficient estimation of word representations in vector space. CoRR, abs/1301.3781,2013. Tomas Mikolov, Ilya Sutskever, Kai Chen, Gregory S. Corrado, and Jeffrey Dean. Distributed representations of words and phrases and their compositionality. NIPS 2013. 其中1主要是描述CBOW和skip-gram相关方法，2描述了Negative Sampling以及训练word2vec的方法。为什么想要重读word2vec：
+推荐系统中，可以把item或user类比与word2vec中的word，很多i2i和u2i的方法都是借鉴的word2vec，以及召回中常用的NCE Loss和Sampled Softmax Loss都和word2vec相关；熟悉word2vec对了解召回，对如何像Aribnb KDD18和阿里EGES一样将word2vec改进应用到具体业务中，会非常有帮助； 召回热门样本的处理，也可以借鉴word2vec中热门词的处理思路； GPT的输入词是字符串，怎么表征输入到NN？当然，现在大家都很熟悉了embedding lookup table，embedding lookup table的其实最早差不多就是来自word2vec（更早影响没那么大暂且不提）；沿着这个拓展，因为词表太大，又在embedding前加了tokenizer过程； word2vec是老祖级别的语言模型，那么最新的GPT和它主要区别在哪里？ 以及初次看GPT代码时，发现GPT的输出是softmax，word2vec其实loss也是softmax loss。但为什么在word2vec里面的softmax就需要Negative sampling，而GPT里却不需要？ CBOW和skip-gram word2vec核心思想是通过训练神经网络，将word映射到高维embedding。其embedding的思想对推荐系统、以及Bert,GPT等都影响深远。Word2vec一般有两种训练方法：CBOW和skip-gram。
+CBOW是通过上下文（Context）学习当前word（BERT中的完形填空和这个很像），假设词与词之间相互独立，则对应的极大似然学习目标为：
+$$ E=-\log p(w_t|w_{t-1},w_{t-2},..,w_{t-c},w_{t&#43;1},w_{t&#43;2},...,w_{t&#43;c}) \\ = -\log \frac{e^{h \cdot v&#39;_o} }{\sum_{j \in V} e^{h \cdot v&#39;_j }} \\ = - h \cdot v&#39;_o &#43; \log {\sum_{j \in V} e^{h \cdot v&#39;_j}} $$ 其中，">
+<meta name="author" content="Monkeyzx">
+<link rel="canonical" href="http://localhost:1313/posts/%E9%87%8D%E8%AF%BB%E7%BB%8F%E5%85%B8word2vec/">
+<link crossorigin="anonymous" href="/assets/css/stylesheet.ee837fdd2191e02acf8a8d0e9c33bfe8030db9328a03e090af1edd606a8ace66.css" integrity="sha256-7oN/3SGR4CrPio0OnDO/6AMNuTKKA&#43;CQrx7dYGqKzmY=" rel="preload stylesheet" as="style">
+<link rel="icon" href="http://localhost:1313/favicon.ico">
+<link rel="icon" type="image/png" sizes="16x16" href="http://localhost:1313/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="http://localhost:1313/favicon-32x32.png">
+<link rel="apple-touch-icon" href="http://localhost:1313/apple-touch-icon.png">
+<link rel="mask-icon" href="http://localhost:1313/safari-pinned-tab.svg">
+<meta name="theme-color" content="#2e2e33">
+<meta name="msapplication-TileColor" content="#2e2e33">
+<link rel="alternate" hreflang="en" href="http://localhost:1313/posts/%E9%87%8D%E8%AF%BB%E7%BB%8F%E5%85%B8word2vec/">
+<noscript>
+    <style>
+        #theme-toggle,
+        .top-link {
+            display: none;
+        }
+
+    </style>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --theme: rgb(29, 30, 32);
+                --entry: rgb(46, 46, 51);
+                --primary: rgb(218, 218, 219);
+                --secondary: rgb(155, 156, 157);
+                --tertiary: rgb(65, 66, 68);
+                --content: rgb(196, 196, 197);
+                --code-block-bg: rgb(46, 46, 51);
+                --code-bg: rgb(55, 56, 62);
+                --border: rgb(51, 51, 51);
+            }
+
+            .list {
+                background: var(--theme);
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-track {
+                background: 0 0;
+            }
+
+            .list:not(.dark)::-webkit-scrollbar-thumb {
+                border-color: var(--theme);
+            }
+        }
+
+    </style>
+</noscript>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css" integrity="sha384-GvrOXuhMATgEsSwCs4smul74iXGOixntILdUW9XmUC6+HX0sLNAK3q71HotJqlAn" crossorigin="anonymous">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js" integrity="sha384-cpW21h6RZv/phavutF+AuVYrr+dA8xD9zs6FwLpaCct6O9ctzYFfFr4dgmgccOTx" crossorigin="anonymous"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js" integrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        renderMathInElement(document.body, {
+          
+          
+          delimiters: [
+              {left: '$$', right: '$$', display: true},
+              {left: '$', right: '$', display: false},
+              {left: '\\(', right: '\\)', display: false},
+              {left: '\\[', right: '\\]', display: true}
+          ],
+          
+          throwOnError : false
+        });
+    });
+</script>
+<meta property="og:title" content="重读经典——word2vec" />
+<meta property="og:description" content="为什么需要重读word2vec Word2vec原论文：
+Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. Efficient estimation of word representations in vector space. CoRR, abs/1301.3781,2013. Tomas Mikolov, Ilya Sutskever, Kai Chen, Gregory S. Corrado, and Jeffrey Dean. Distributed representations of words and phrases and their compositionality. NIPS 2013. 其中1主要是描述CBOW和skip-gram相关方法，2描述了Negative Sampling以及训练word2vec的方法。为什么想要重读word2vec：
+推荐系统中，可以把item或user类比与word2vec中的word，很多i2i和u2i的方法都是借鉴的word2vec，以及召回中常用的NCE Loss和Sampled Softmax Loss都和word2vec相关；熟悉word2vec对了解召回，对如何像Aribnb KDD18和阿里EGES一样将word2vec改进应用到具体业务中，会非常有帮助； 召回热门样本的处理，也可以借鉴word2vec中热门词的处理思路； GPT的输入词是字符串，怎么表征输入到NN？当然，现在大家都很熟悉了embedding lookup table，embedding lookup table的其实最早差不多就是来自word2vec（更早影响没那么大暂且不提）；沿着这个拓展，因为词表太大，又在embedding前加了tokenizer过程； word2vec是老祖级别的语言模型，那么最新的GPT和它主要区别在哪里？ 以及初次看GPT代码时，发现GPT的输出是softmax，word2vec其实loss也是softmax loss。但为什么在word2vec里面的softmax就需要Negative sampling，而GPT里却不需要？ CBOW和skip-gram word2vec核心思想是通过训练神经网络，将word映射到高维embedding。其embedding的思想对推荐系统、以及Bert,GPT等都影响深远。Word2vec一般有两种训练方法：CBOW和skip-gram。
+CBOW是通过上下文（Context）学习当前word（BERT中的完形填空和这个很像），假设词与词之间相互独立，则对应的极大似然学习目标为：
+$$ E=-\log p(w_t|w_{t-1},w_{t-2},..,w_{t-c},w_{t&#43;1},w_{t&#43;2},...,w_{t&#43;c}) \\ = -\log \frac{e^{h \cdot v&#39;_o} }{\sum_{j \in V} e^{h \cdot v&#39;_j }} \\ = - h \cdot v&#39;_o &#43; \log {\sum_{j \in V} e^{h \cdot v&#39;_j}} $$ 其中，" />
+<meta property="og:type" content="article" />
+<meta property="og:url" content="http://localhost:1313/posts/%E9%87%8D%E8%AF%BB%E7%BB%8F%E5%85%B8word2vec/" />
+<meta property="og:image" content="http://localhost:1313/papermod-cover.png" />
+<meta property="article:section" content="posts" />
+<meta property="article:published_time" content="2024-03-31T15:32:32+08:00" />
+<meta property="article:modified_time" content="2024-03-31T15:32:32+08:00" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="http://localhost:1313/papermod-cover.png" />
+<meta name="twitter:title" content="重读经典——word2vec"/>
+<meta name="twitter:description" content="为什么需要重读word2vec Word2vec原论文：
+Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. Efficient estimation of word representations in vector space. CoRR, abs/1301.3781,2013. Tomas Mikolov, Ilya Sutskever, Kai Chen, Gregory S. Corrado, and Jeffrey Dean. Distributed representations of words and phrases and their compositionality. NIPS 2013. 其中1主要是描述CBOW和skip-gram相关方法，2描述了Negative Sampling以及训练word2vec的方法。为什么想要重读word2vec：
+推荐系统中，可以把item或user类比与word2vec中的word，很多i2i和u2i的方法都是借鉴的word2vec，以及召回中常用的NCE Loss和Sampled Softmax Loss都和word2vec相关；熟悉word2vec对了解召回，对如何像Aribnb KDD18和阿里EGES一样将word2vec改进应用到具体业务中，会非常有帮助； 召回热门样本的处理，也可以借鉴word2vec中热门词的处理思路； GPT的输入词是字符串，怎么表征输入到NN？当然，现在大家都很熟悉了embedding lookup table，embedding lookup table的其实最早差不多就是来自word2vec（更早影响没那么大暂且不提）；沿着这个拓展，因为词表太大，又在embedding前加了tokenizer过程； word2vec是老祖级别的语言模型，那么最新的GPT和它主要区别在哪里？ 以及初次看GPT代码时，发现GPT的输出是softmax，word2vec其实loss也是softmax loss。但为什么在word2vec里面的softmax就需要Negative sampling，而GPT里却不需要？ CBOW和skip-gram word2vec核心思想是通过训练神经网络，将word映射到高维embedding。其embedding的思想对推荐系统、以及Bert,GPT等都影响深远。Word2vec一般有两种训练方法：CBOW和skip-gram。
+CBOW是通过上下文（Context）学习当前word（BERT中的完形填空和这个很像），假设词与词之间相互独立，则对应的极大似然学习目标为：
+$$ E=-\log p(w_t|w_{t-1},w_{t-2},..,w_{t-c},w_{t&#43;1},w_{t&#43;2},...,w_{t&#43;c}) \\ = -\log \frac{e^{h \cdot v&#39;_o} }{\sum_{j \in V} e^{h \cdot v&#39;_j }} \\ = - h \cdot v&#39;_o &#43; \log {\sum_{j \in V} e^{h \cdot v&#39;_j}} $$ 其中，"/>
+
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position":  1 ,
+      "name": "Posts",
+      "item": "http://localhost:1313/posts/"
+    }, 
+    {
+      "@type": "ListItem",
+      "position":  2 ,
+      "name": "重读经典——word2vec",
+      "item": "http://localhost:1313/posts/%E9%87%8D%E8%AF%BB%E7%BB%8F%E5%85%B8word2vec/"
+    }
+  ]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "重读经典——word2vec",
+  "name": "重读经典——word2vec",
+  "description": "为什么需要重读word2vec Word2vec原论文：\nTomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. Efficient estimation of word representations in vector space. CoRR, abs/1301.3781,2013. Tomas Mikolov, Ilya Sutskever, Kai Chen, Gregory S. Corrado, and Jeffrey Dean. Distributed representations of words and phrases and their compositionality. NIPS 2013. 其中1主要是描述CBOW和skip-gram相关方法，2描述了Negative Sampling以及训练word2vec的方法。为什么想要重读word2vec：\n推荐系统中，可以把item或user类比与word2vec中的word，很多i2i和u2i的方法都是借鉴的word2vec，以及召回中常用的NCE Loss和Sampled Softmax Loss都和word2vec相关；熟悉word2vec对了解召回，对如何像Aribnb KDD18和阿里EGES一样将word2vec改进应用到具体业务中，会非常有帮助； 召回热门样本的处理，也可以借鉴word2vec中热门词的处理思路； GPT的输入词是字符串，怎么表征输入到NN？当然，现在大家都很熟悉了embedding lookup table，embedding lookup table的其实最早差不多就是来自word2vec（更早影响没那么大暂且不提）；沿着这个拓展，因为词表太大，又在embedding前加了tokenizer过程； word2vec是老祖级别的语言模型，那么最新的GPT和它主要区别在哪里？ 以及初次看GPT代码时，发现GPT的输出是softmax，word2vec其实loss也是softmax loss。但为什么在word2vec里面的softmax就需要Negative sampling，而GPT里却不需要？ CBOW和skip-gram word2vec核心思想是通过训练神经网络，将word映射到高维embedding。其embedding的思想对推荐系统、以及Bert,GPT等都影响深远。Word2vec一般有两种训练方法：CBOW和skip-gram。\nCBOW是通过上下文（Context）学习当前word（BERT中的完形填空和这个很像），假设词与词之间相互独立，则对应的极大似然学习目标为：\n$$ E=-\\log p(w_t|w_{t-1},w_{t-2},..,w_{t-c},w_{t+1},w_{t+2},...,w_{t+c}) \\\\ = -\\log \\frac{e^{h \\cdot v'_o} }{\\sum_{j \\in V} e^{h \\cdot v'_j }} \\\\ = - h \\cdot v'_o + \\log {\\sum_{j \\in V} e^{h \\cdot v'_j}} $$ 其中，",
+  "keywords": [
+    
+  ],
+  "articleBody": "为什么需要重读word2vec Word2vec原论文：\nTomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. Efficient estimation of word representations in vector space. CoRR, abs/1301.3781,2013. Tomas Mikolov, Ilya Sutskever, Kai Chen, Gregory S. Corrado, and Jeffrey Dean. Distributed representations of words and phrases and their compositionality. NIPS 2013. 其中1主要是描述CBOW和skip-gram相关方法，2描述了Negative Sampling以及训练word2vec的方法。为什么想要重读word2vec：\n推荐系统中，可以把item或user类比与word2vec中的word，很多i2i和u2i的方法都是借鉴的word2vec，以及召回中常用的NCE Loss和Sampled Softmax Loss都和word2vec相关；熟悉word2vec对了解召回，对如何像Aribnb KDD18和阿里EGES一样将word2vec改进应用到具体业务中，会非常有帮助； 召回热门样本的处理，也可以借鉴word2vec中热门词的处理思路； GPT的输入词是字符串，怎么表征输入到NN？当然，现在大家都很熟悉了embedding lookup table，embedding lookup table的其实最早差不多就是来自word2vec（更早影响没那么大暂且不提）；沿着这个拓展，因为词表太大，又在embedding前加了tokenizer过程； word2vec是老祖级别的语言模型，那么最新的GPT和它主要区别在哪里？ 以及初次看GPT代码时，发现GPT的输出是softmax，word2vec其实loss也是softmax loss。但为什么在word2vec里面的softmax就需要Negative sampling，而GPT里却不需要？ CBOW和skip-gram word2vec核心思想是通过训练神经网络，将word映射到高维embedding。其embedding的思想对推荐系统、以及Bert,GPT等都影响深远。Word2vec一般有两种训练方法：CBOW和skip-gram。\nCBOW是通过上下文（Context）学习当前word（BERT中的完形填空和这个很像），假设词与词之间相互独立，则对应的极大似然学习目标为：\n$$ E=-\\log p(w_t|w_{t-1},w_{t-2},..,w_{t-c},w_{t+1},w_{t+2},...,w_{t+c}) \\\\ = -\\log \\frac{e^{h \\cdot v'_o} }{\\sum_{j \\in V} e^{h \\cdot v'_j }} \\\\ = - h \\cdot v'_o + \\log {\\sum_{j \\in V} e^{h \\cdot v'_j}} $$ 其中，\nc是context窗口大小，在一个context内就是正样本，是个人工超参数，或根据一定规则动态调整； Loss函数使用的Softmax多分类，类目数即为词典大小V（语言模型里面，V大概几万-十万），即预估中心词是字典中的哪一个； h是CBOW的隐藏层输出，所有输入$w_{t-1},w_{t-2}…,w_{t+1},w_{t+2}$通过lookup table查到embedding查询得到 $v_{t-1},v_{t-2}…,v_{t+1},v_{t+2}$之后，再进行sum pooling的结果；即$h=1/C*(v_{t-1},v_{t-2},…,v_{t+1},v_{t+2},…)$，C为上下文长度；输入表达矩阵（lookup table）存储的就是word embedding的结果； v’是输出矩阵表达，注意在word2vec里面，和输入表达矩阵（即lookup table）不共享参数（GPT中的Head和输入Lookup Table是共享参数）； 模型假设 = h * v’：输入表征和预估词表征的点乘运算，可以理解为是输入context的embedding（即sum pooing结果）和输出v’的内积相似度，最终loss算的是这个相似度的softmax loss； Skip-gram与CBOW相反，它是则根据当前word来学习可能的上下文概率，对应的极大似然估计目标为：\n$$ E=-\\log p(w_{t-1},w_{t-2},...,w_{t-c},w_{t+1},w_{t+2},...,w_{t+c}|w_t) \\\\ =-\\log p(w_{t-1}|w_t,..,w_{t-c}|w_t,...,w_{t+1}|w_t,...,w_{t+c}|w_t) \\\\ =-\\log \\prod_{o \\in C} p(w_o|w_t) \\\\ =-\\sum_{o \\in C} \\log \\frac{e^{v_i \\cdot v'_o} }{\\sum_{j \\in V} e^{v_i \\cdot v'_j }} \\\\ =-\\sum_{o \\in C} {v_i \\cdot v'_o} + C \\log \\sum_{j \\in V} e^{v_i \\cdot v'_j } $$ 其中，\nLoss函数也是使用的Softmax多分类，类目数即为词典大小V；相比CBOW，这里最外层多了对Context的求和，C即为Context； $v_i$是输入word通过lookup table查到的embedding，没有也无需sum pooling操作，因为skip-gram输入只有一个词； 同样的，v’是输出矩阵表达，注意在word2vec里面，和输表达入矩阵（即lookup table）不一样； v_i * v’ 点乘运算，可以理解为是当前词的embedding和Context里每个词的embedding计算相似度（注意这里输出词的embedding和输入词不是同一个词表）； 正样本为上下文内的样本，负样本为大词典V中的其他样本，loss函数为softmax。 Negative Sampling 到目前为止，已经有了CBOW和Skip-gram的原始优化目标，实际上不管是CBOW还是Skip-gram都是建模成词典大小的softmax多分类问题。但是有个很棘手的问题——计算复杂度。假设词表大小是V，隐藏层维度是H，则每次loss计算，softmax的分母就需要$O(V*H^2)$次的乘法，这是不可接受的。为了有效的优化目标，工程实现上有 Hierarchical Softmax 和 Negative Sampling的方法。Hierarchical Softmax在工业界用得不多，Negative Sampling相对更容易实现，所以这里只讨论Negative Sampling。\nNegative Sampling的Loss函数，一种方式是直接对负样本采样，比如包括自己就5类，直接在5类上计算softmax——Sampled Softmax Loss：\n$$ Sampled Softmax Loss= \\log \\frac {e^{v_i \\cdot v'_o}}{e^{v_i \\cdot v'_o} + \\sum_{j \\in S_{neg}} e^{v_i \\cdot v'_j}} $$ 另一种方式是采用NEC（Noise Contrastive Estimation）Loss，有文献证明NEC Loss可以近似上面的softmax loss。而工业界常用NEC的简化版本，NEG Loss：\n$$ NEG Loss=-log (\\frac {1}{1+e^{-v_i \\cdot v'_o}}) - \\sum_{j \\in S_{neg}} log (1 - \\frac {1}{1+e^{-v_i \\cdot v'_j}}) \\\\ =-log\\ \\sigma(v_i \\cdot v'_o) - \\sum_{j \\in S_{neg}} log\\ \\sigma(-v_i \\cdot v'_j) $$ 其中，\nS_neg为采样的负样本，一个正样本采样多个负样本； NEG Loss实际上就是计算sigmoid函数的BCE Loss，只是负样本是采样得到的； 我们可以从另一个视角来理解NEGLoss更容易：构造样本，中心词w与上下文c同属一个窗口，则样本的label为1；随机采样一些上下文c’，则 的样本label为0。建模w和context的联合概率$p(w,c)$——二分类就是sigmoid函数，不同于skip-gram和CBOW里面的条件概率，对应Loss为：\n$$ NEGLoss = -\\log (\\prod_{(w,c) \\in D_p} p(D=1|w,c) + \\prod_{(w,c') \\in D_n} p(D=0|w,c') ] ) \\\\ = -\\sum_{(w,c) \\in D_p} \\log \\frac{1}{1+e^{-v_c \\cdot v_w}} - \\sum_{(w,c') \\in D_n} \\log (1 - \\frac{1}{1+e^{-v_c' \\cdot v_w}}) \\\\ = -\\sum_{(w,c) \\in D_p} \\log \\sigma(v_c \\cdot v_w) -\\sum_{(w,c') \\in D_n} \\log \\sigma(v_c' \\cdot v_w) $$ 其中，Dp是正样本集合，Dn是采样的负样本集合。\nSampled Softmax Loss和NEG Loss在推荐系统中应用非常广泛，尤其是推荐系统的召回模型中。\n高频词降采样 为了很好的完成对word embedding的训练，还有一个问题：对于’a’, ’the’, ‘in’这种词，出现频率很高，但信息含量又很低，频繁的送入word2vec模型反而容易把模型带偏。为了处理这种imbalance的高频词，在训练时，word2vec采用下面的概率对word进行随机丢弃：\n$$ P(w_i)=1-\\sqrt{\\frac{t}{f(w_i)}} $$ 其中\nf(w_i)就是词w_i出现的频率。100个词里面出现10词，则=1/10，代表热度； t是一个人工选定的阈值（原文$10^{-5}$）； word2vec与推荐算法 item2vec 把item类比成word2vec中的word，就有了item2vec，利用item的vector进行i2i协同过滤。且item2vec中使用了和word2vec一样的高频词降采样方法对热门item打压。\nReal-time Personalization using Embeddings for Search Ranking at Airbnb Aribnb分别采用：\n用户click session的数据生成listing的embedding，捕捉短期的实时个性化； 用户booking session的数据生成user-type和listing-type的embedding，捕捉中长期用户兴趣； Listing embedding采用word2vec中的skip-gram模式（如下图），用户点击序列类比于word2vec的上下文，但是相比word2vec又做一些应用场景的适配：\n除了考虑上下文，如果有booking，在推荐中被认为是一个强信号，将booking也加到context中；因此其优化目标除了word2vec中的正负样本，还增加了booking listing的正样本（下面优化目的第3项）； 酒店预定一般具有地理特性，即用户一般一个session都在浏览同一地区的酒店，如果只采用word2vec中的随机负采样，引入的都是easy样本（直接通过地区信号就能分辨出负样本），因此还需要引入一些hard samples，从central listing的相同地区采样部分hard样本，构成下面优化目标中的第4项； Listing Embedding optimization target User-type和Listing-type Embedding也是skip-gram model，然后针对应用场景做特定的优化。\nEGES Billion-scale Commodity Embedding for E-commerce Recommendation in Alibaba\n将word2vec中文本序列的表达扩展到graph的表达，将多个用户的行为序列画在graph上，在graph上随机游走生成新的item序列（类比text context window），根据生成的item序列用Skip-gram学习item embedding表达。\nDSSM 各大厂里面有很多将双塔用于推荐召回的例子，其对应的loss和负采样方法都一定程度借鉴的word2vec。比如：\nMicrosoft: DSSM 2013：DSSM用于文档检索 Facebook: Embedding-based Retrieval in Facebook Search, 2020：详细介绍了Facebook基于Embedding召回的工程实践 Google Youtube: Sampling-bias-corrected neural modeling for large corpus item recommendations, 2019：Youtube双塔召回 Google Play: Mixed Negative Sampling for Learning Two-tower Neural Networks in Recommendations, 2020：google play双塔召回 关于DSSM用于召回本身有很多工程细节，需要单独一篇文章去讲解。双塔最基本的结构基本如下：Query和Document的Embedding可以对应word2vec的输入表达和输出表达矩阵，只是word2vec的输入表达和输出表达都是word，而双塔模型中可能是i2i，也可能是u2i。\n不管如何，双塔模型的negative sampling和loss函数与word2vec很相似，比如：\nmicrosoft的dssm：negative sampled softmax loss，$ P(D|Q) = \\frac{exp(\\gamma R(Q,D))}{\\sum_{D’ \\in D} exp(\\gamma R(Q,D’))} $，就是sampled softmax loss，增加了温度超参数$\\gamma$。\nword2vec与LLM BERT和GPT延续了word2vec表征一切的思路，用大数据pre-training就能得到NLP的非常好的表征。然后，只要针对具体业务场景的少量数据做fine-tuning就可以达到很不错的效果。BERT和GPT相比word2vec的主要优势在于，word2vec只考虑了单个词的表征，没有考虑词在不同上下文下的差异，比如 apple 在I have an apple laptop和I want eat apple里面含义是完全不同的，所以用于表征apple的embedding也应该是不同的。\n这里试着回答开头困惑的问题：\nGPT的输出是softmax，word2vec其实loss也是softmax loss。但为什么在word2vec里面的softmax就需要Negative sampling，而GPT里却不需要？\n答：因为word2vec里面softmax的分母，包含了输入表征和输出表征向量的inner product，且每次迭代都要计算V次，这才是计算量大的根源，复杂度$O(V*H^2)$；而GPT最后一层是lm_head（nn.Linear层），假设lm_head前的隐藏层输出为H，词典大小为V，复杂度仅为O(VH)，自然可以直接计算softmax loss。\n参考 Xin Rong. word2vec Parameter Learning Explained. 2016. Goldberg, Y. and Levy, O. (2014). word2vec explained: deriving mikolov et al.’s negativesampling word-embedding method. arXiv:1402.3722 [cs, stat]. arXiv: 1402.3722. Mikolov, T., Chen, K., Corrado, G., and Dean, J. (2013a). Efficient estimation of word representations in vector space. arXiv preprint arXiv:1301.3781. Mikolov, T., Sutskever, I., Chen, K., Corrado, G. S., and Dean, J. (2013b). Distributed representations of words and phrases and their compositionality. In Advances in Neural Information Processing Systems, pages 3111–3119. Grbovic, Mihajlo, and Haibin Cheng. “Real-time personalization using embeddings for search ranking at airbnb.” Proceedings of the 24th ACM SIGKDD international conference on knowledge discovery \u0026 data mining . 2018. nanoGPT. https://github.com/karpathy/nanoGPT/blob/325be85d9be8c81b436728a420e85796c57dba7e/model.py#L138C60-L138C107 ",
+  "wordCount" : "547",
+  "inLanguage": "en",
+  "image": "http://localhost:1313/papermod-cover.png","datePublished": "2024-03-31T15:32:32+08:00",
+  "dateModified": "2024-03-31T15:32:32+08:00",
+  "author":{
+    "@type": "Person",
+    "name": "Monkeyzx"
+  },
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "http://localhost:1313/posts/%E9%87%8D%E8%AF%BB%E7%BB%8F%E5%85%B8word2vec/"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Monkeyzx",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "http://localhost:1313/favicon.ico"
+    }
+  }
+}
+</script>
+</head>
+
+<body class="" id="top">
+<script>
+    if (localStorage.getItem("pref-theme") === "dark") {
+        document.body.classList.add('dark');
+    } else if (localStorage.getItem("pref-theme") === "light") {
+        document.body.classList.remove('dark')
+    } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        document.body.classList.add('dark');
+    }
+
+</script>
+
+<header class="header">
+    <nav class="nav">
+        <div class="logo">
+            <a href="http://localhost:1313/" accesskey="h" title="Monkeyzx (Alt + H)">Monkeyzx</a>
+            <div class="logo-switches">
+                <button id="theme-toggle" accesskey="t" title="(Alt + T)">
+                    <svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24"
+                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <ul id="menu">
+            <li>
+                <a href="http://localhost:1313/archives/" title="Archive">
+                    <span>Archive</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/search/" title="Search (Alt &#43; /)" accesskey=/>
+                    <span>Search</span>
+                </a>
+            </li>
+            <li>
+                <a href="http://localhost:1313/tags/" title="Tags">
+                    <span>Tags</span>
+                </a>
+            </li>
+            <li>
+                <a href="https://github.com/xiahouzuoxin/notes" title="LegacyNotes">
+                    <span>LegacyNotes</span>&nbsp;
+                    <svg fill="none" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round"
+                        stroke-linejoin="round" stroke-width="2.5" viewBox="0 0 24 24" height="12" width="12">
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"></path>
+                        <path d="M15 3h6v6"></path>
+                        <path d="M10 14L21 3"></path>
+                    </svg>
+                </a>
+            </li>
+        </ul>
+    </nav>
+</header>
+<main class="main">
+
+<article class="post-single">
+  <header class="post-header">
+    <div class="breadcrumbs"><a href="http://localhost:1313/">Home</a>&nbsp;»&nbsp;<a href="http://localhost:1313/posts/">Posts</a></div>
+    <h1 class="post-title entry-hint-parent">
+      重读经典——word2vec
+    </h1>
+    <div class="post-meta"><span title='2024-03-31 15:32:32 +0800 CST'>March 31, 2024</span>&nbsp;·&nbsp;3 min&nbsp;·&nbsp;Monkeyzx&nbsp;|&nbsp;<a href="https://github.com/xiahouzuoxin/xiahouzuoxin.github.io/blob/master/content/posts/%e9%87%8d%e8%af%bb%e7%bb%8f%e5%85%b8%e2%80%94%e2%80%94word2vec/index.md" rel="noopener noreferrer" target="_blank">Suggest Changes</a>
+
+</div>
+  </header> <div class="toc">
+    <details >
+        <summary accesskey="c" title="(Alt + C)">
+            <span class="details">Table of Contents</span>
+        </summary>
+
+        <div class="inner"><ul>
+                <li>
+                    <a href="#%e4%b8%ba%e4%bb%80%e4%b9%88%e9%9c%80%e8%a6%81%e9%87%8d%e8%af%bbword2vec" aria-label="为什么需要重读word2vec">为什么需要重读word2vec</a></li>
+                <li>
+                    <a href="#cbow%e5%92%8cskip-gram" aria-label="CBOW和skip-gram">CBOW和skip-gram</a><ul>
+                        
+                <li>
+                    <a href="#negative-sampling" aria-label="Negative Sampling">Negative Sampling</a></li>
+                <li>
+                    <a href="#%e9%ab%98%e9%a2%91%e8%af%8d%e9%99%8d%e9%87%87%e6%a0%b7" aria-label="高频词降采样">高频词降采样</a></li></ul>
+                </li>
+                <li>
+                    <a href="#word2vec%e4%b8%8e%e6%8e%a8%e8%8d%90%e7%ae%97%e6%b3%95" aria-label="word2vec与推荐算法">word2vec与推荐算法</a><ul>
+                        
+                <li>
+                    <a href="#item2vec" aria-label="item2vec">item2vec</a></li>
+                <li>
+                    <a href="#real-time-personalization-using-embeddings-for-search-ranking-at-airbnbhttpsdlacmorgdoipdf10114532198193219885" aria-label="Real-time Personalization using Embeddings for Search Ranking at Airbnb">Real-time Personalization using Embeddings for Search Ranking at Airbnb</a></li>
+                <li>
+                    <a href="#eges" aria-label="EGES">EGES</a></li>
+                <li>
+                    <a href="#dssm" aria-label="DSSM">DSSM</a></li></ul>
+                </li>
+                <li>
+                    <a href="#word2vec%e4%b8%8ellm" aria-label="word2vec与LLM">word2vec与LLM</a></li>
+                <li>
+                    <a href="#%e5%8f%82%e8%80%83" aria-label="参考">参考</a>
+                </li>
+            </ul>
+        </div>
+    </details>
+</div>
+
+  <div class="post-content"><h2 id="为什么需要重读word2vec">为什么需要重读word2vec<a hidden class="anchor" aria-hidden="true" href="#为什么需要重读word2vec">#</a></h2>
+<p>Word2vec原论文：</p>
+<ol>
+<li>Tomas Mikolov, Kai Chen, Greg Corrado, and Jeffrey Dean. <a href="https://arxiv.org/pdf/1301.3781.pdf">Efficient estimation of word representations in vector space</a>. CoRR, abs/1301.3781,2013.</li>
+<li>Tomas Mikolov, Ilya Sutskever, Kai Chen, Gregory S. Corrado, and Jeffrey Dean. <a href="https://arxiv.org/pdf/1310.4546.pdf">Distributed representations of words and phrases and their compositionality</a>. NIPS 2013.</li>
+</ol>
+<p>其中1主要是描述CBOW和skip-gram相关方法，2描述了Negative Sampling以及训练word2vec的方法。为什么想要重读word2vec：</p>
+<ol>
+<li>推荐系统中，可以把item或user类比与word2vec中的word，很多i2i和u2i的方法都是借鉴的word2vec，以及召回中常用的NCE Loss和Sampled Softmax Loss都和word2vec相关；熟悉word2vec对了解召回，对如何像Aribnb <a href="https://www.kdd.org/kdd2018/accepted-papers/view/real-time-personalization-using-embeddings-for-search-ranking-at-airbnb">KDD18</a>和阿里<a href="https://arxiv.org/pdf/1803.02349.pdf">EGES</a>一样将word2vec改进应用到具体业务中，会非常有帮助；</li>
+<li>召回热门样本的处理，也可以借鉴word2vec中热门词的处理思路；</li>
+<li>GPT的输入词是字符串，怎么表征输入到NN？当然，现在大家都很熟悉了embedding lookup table，embedding lookup table的其实最早差不多就是来自word2vec（更早影响没那么大暂且不提）；沿着这个拓展，因为词表太大，又在embedding前加了tokenizer过程；</li>
+<li>word2vec是老祖级别的语言模型，那么最新的GPT和它主要区别在哪里？</li>
+<li>以及初次看GPT代码时，发现GPT的输出是softmax，word2vec其实loss也是softmax loss。但为什么在word2vec里面的softmax就需要Negative sampling，而GPT里却不需要？</li>
+</ol>
+<h2 id="cbow和skip-gram">CBOW和skip-gram<a hidden class="anchor" aria-hidden="true" href="#cbow和skip-gram">#</a></h2>
+<p>word2vec核心思想是通过训练神经网络，将word映射到高维embedding。其embedding的思想对推荐系统、以及Bert,GPT等都影响深远。Word2vec一般有两种训练方法：CBOW和skip-gram。</p>
+<p><img loading="lazy" src="image/index/1711874328528.png" alt="1711874328528"  />
+</p>
+<p>CBOW是通过上下文（Context）学习当前word（BERT中的完形填空和这个很像），假设词与词之间相互独立，则对应的极大似然学习目标为：</p>
+$$
+E=-\log p(w_t|w_{t-1},w_{t-2},..,w_{t-c},w_{t+1},w_{t+2},...,w_{t+c}) \\
+ = -\log \frac{e^{h \cdot v'_o} }{\sum_{j \in V} e^{h \cdot v'_j }} \\
+ = - h \cdot v'_o + \log {\sum_{j \in V} e^{h \cdot v'_j}}
+$$
+<p>其中，</p>
+<ol>
+<li>c是context窗口大小，在一个context内就是正样本，是个人工超参数，或根据一定规则动态调整；</li>
+<li>Loss函数使用的Softmax多分类，类目数即为词典大小V（语言模型里面，V大概几万-十万），即预估中心词是字典中的哪一个；</li>
+<li>h是CBOW的隐藏层输出，所有输入$w_{t-1},w_{t-2}&hellip;,w_{t+1},w_{t+2}$通过lookup table查到embedding查询得到 $v_{t-1},v_{t-2}&hellip;,v_{t+1},v_{t+2}$之后，再进行sum pooling的结果；即$h=1/C*(v_{t-1},v_{t-2},&hellip;,v_{t+1},v_{t+2},&hellip;)$，C为上下文长度；输入表达矩阵（lookup table）存储的就是word embedding的结果；</li>
+<li>v&rsquo;是输出矩阵表达，注意在word2vec里面，和输入表达矩阵（即lookup table）不共享参数（GPT中的Head和输入Lookup Table是共享参数）；</li>
+<li>模型假设 = h * v&rsquo;：输入表征和预估词表征的点乘运算，可以理解为是输入context的embedding（即sum pooing结果）和输出v&rsquo;的内积相似度，最终loss算的是这个相似度的softmax loss；</li>
+</ol>
+<p>Skip-gram与CBOW相反，它是则根据当前word来学习可能的上下文概率，对应的极大似然估计目标为：</p>
+$$
+E=-\log p(w_{t-1},w_{t-2},...,w_{t-c},w_{t+1},w_{t+2},...,w_{t+c}|w_t) \\
+ =-\log p(w_{t-1}|w_t,..,w_{t-c}|w_t,...,w_{t+1}|w_t,...,w_{t+c}|w_t) \\
+ =-\log \prod_{o \in C} p(w_o|w_t) \\
+ =-\sum_{o \in C} \log \frac{e^{v_i \cdot v'_o} }{\sum_{j \in V} e^{v_i \cdot v'_j }} \\
+ =-\sum_{o \in C} {v_i \cdot v'_o} + C \log \sum_{j \in V} e^{v_i \cdot v'_j }
+$$
+<p>其中，</p>
+<ol>
+<li>Loss函数也是使用的Softmax多分类，类目数即为词典大小V；相比CBOW，这里最外层多了对Context的求和，C即为Context；</li>
+<li>$v_i$是输入word通过lookup table查到的embedding，没有也无需sum pooling操作，因为skip-gram输入只有一个词；</li>
+<li>同样的，v&rsquo;是输出矩阵表达，注意在word2vec里面，和输表达入矩阵（即lookup table）不一样；</li>
+<li>v_i * v&rsquo; 点乘运算，可以理解为是当前词的embedding和Context里每个词的embedding计算相似度（注意这里输出词的embedding和输入词不是同一个词表）；</li>
+<li>正样本为上下文内的样本，负样本为大词典V中的其他样本，loss函数为softmax。</li>
+</ol>
+<h3 id="negative-sampling">Negative Sampling<a hidden class="anchor" aria-hidden="true" href="#negative-sampling">#</a></h3>
+<p>到目前为止，已经有了CBOW和Skip-gram的原始优化目标，实际上不管是CBOW还是Skip-gram都是建模成词典大小的softmax多分类问题。但是有个很棘手的问题——计算复杂度。假设词表大小是V，隐藏层维度是H，则每次loss计算，softmax的分母就需要$O(V*H^2)$次的乘法，这是不可接受的。为了有效的优化目标，工程实现上有 Hierarchical Softmax 和 Negative Sampling的方法。Hierarchical Softmax在工业界用得不多，Negative Sampling相对更容易实现，所以这里只讨论Negative Sampling。</p>
+<p>Negative Sampling的Loss函数，一种方式是直接对负样本采样，比如包括自己就5类，直接在5类上计算softmax——Sampled Softmax Loss：</p>
+$$
+Sampled Softmax Loss= \log \frac {e^{v_i \cdot v'_o}}{e^{v_i \cdot v'_o} + \sum_{j \in S_{neg}} e^{v_i \cdot v'_j}}
+$$
+<p>另一种方式是采用NEC（Noise Contrastive Estimation）Loss，有文献证明NEC Loss可以近似上面的softmax loss。而工业界常用NEC的简化版本，NEG Loss：</p>
+$$
+NEG Loss=-log (\frac {1}{1+e^{-v_i \cdot v'_o}}) - \sum_{j \in S_{neg}} log (1 - \frac {1}{1+e^{-v_i \cdot v'_j}}) \\
+=-log\ \sigma(v_i \cdot v'_o) - \sum_{j \in S_{neg}} log\ \sigma(-v_i \cdot v'_j)
+$$
+<p>其中，</p>
+<ol>
+<li>S_neg为采样的负样本，一个正样本采样多个负样本；</li>
+<li>NEG Loss实际上就是计算sigmoid函数的BCE Loss，只是负样本是采样得到的；</li>
+</ol>
+<p>我们可以从另一个视角来理解NEGLoss更容易：构造样本，中心词w与上下文c同属一个窗口，则&lt;w,c&gt;样本的label为1；随机采样一些上下文c&rsquo;，则 &lt;w,c&rsquo;&gt;的样本label为0。建模w和context的联合概率$p(w,c)$——二分类就是sigmoid函数，不同于skip-gram和CBOW里面的条件概率，对应Loss为：</p>
+$$
+NEGLoss = -\log (\prod_{(w,c) \in D_p} p(D=1|w,c) + \prod_{(w,c') \in D_n} p(D=0|w,c') ] ) \\
+= -\sum_{(w,c) \in D_p} \log \frac{1}{1+e^{-v_c \cdot v_w}} - \sum_{(w,c') \in D_n} \log (1 - \frac{1}{1+e^{-v_c' \cdot v_w}}) \\
+= -\sum_{(w,c) \in D_p} \log \sigma(v_c \cdot v_w) -\sum_{(w,c') \in D_n} \log \sigma(v_c' \cdot v_w)
+$$
+<p>其中，Dp是正样本集合，Dn是采样的负样本集合。</p>
+<p>Sampled Softmax Loss和NEG Loss在推荐系统中应用非常广泛，尤其是推荐系统的召回模型中。</p>
+<h3 id="高频词降采样">高频词降采样<a hidden class="anchor" aria-hidden="true" href="#高频词降采样">#</a></h3>
+<p>为了很好的完成对word embedding的训练，还有一个问题：对于&rsquo;a&rsquo;, &rsquo;the&rsquo;, &lsquo;in&rsquo;这种词，出现频率很高，但信息含量又很低，频繁的送入word2vec模型反而容易把模型带偏。为了处理这种imbalance的高频词，在训练时，word2vec采用下面的概率对word进行随机丢弃：</p>
+$$
+P(w_i)=1-\sqrt{\frac{t}{f(w_i)}}
+$$
+<p>其中</p>
+<ul>
+<li>f(w_i)就是词w_i出现的频率。100个词里面出现10词，则=1/10，代表热度；</li>
+<li>t是一个人工选定的阈值（原文$10^{-5}$）；</li>
+</ul>
+<h2 id="word2vec与推荐算法">word2vec与推荐算法<a hidden class="anchor" aria-hidden="true" href="#word2vec与推荐算法">#</a></h2>
+<h3 id="item2vec">item2vec<a hidden class="anchor" aria-hidden="true" href="#item2vec">#</a></h3>
+<p>把item类比成word2vec中的word，就有了<a href="https://arxiv.org/pdf/1603.04259.pdf">item2vec</a>，利用item的vector进行i2i协同过滤。且item2vec中使用了和word2vec一样的高频词降采样方法对热门item打压。</p>
+<h3 id="real-time-personalization-using-embeddings-for-search-ranking-at-airbnbhttpsdlacmorgdoipdf10114532198193219885"><a href="https://dl.acm.org/doi/pdf/10.1145/3219819.3219885">Real-time Personalization using Embeddings for Search Ranking at Airbnb</a><a hidden class="anchor" aria-hidden="true" href="#real-time-personalization-using-embeddings-for-search-ranking-at-airbnbhttpsdlacmorgdoipdf10114532198193219885">#</a></h3>
+<p>Aribnb分别采用：</p>
+<ol>
+<li>用户click session的数据生成listing的embedding，捕捉短期的实时个性化；</li>
+<li>用户booking session的数据生成user-type和listing-type的embedding，捕捉中长期用户兴趣；</li>
+</ol>
+<p>Listing embedding采用word2vec中的skip-gram模式（如下图），用户点击序列类比于word2vec的上下文，但是相比word2vec又做一些应用场景的适配：</p>
+<ol>
+<li>除了考虑上下文，如果有booking，在推荐中被认为是一个强信号，将booking也加到context中；因此其优化目标除了word2vec中的正负样本，还增加了booking listing的正样本（下面优化目的第3项）；</li>
+<li>酒店预定一般具有地理特性，即用户一般一个session都在浏览同一地区的酒店，如果只采用word2vec中的随机负采样，引入的都是easy样本（直接通过地区信号就能分辨出负样本），因此还需要引入一些hard samples，从central listing的相同地区采样部分hard样本，构成下面优化目标中的第4项；</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Listing Embedding</th>
+<th>optimization target</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><img loading="lazy" src="image/index/1711943163614.png" alt="1711943163614"  />
+</td>
+<td><img loading="lazy" src="image/index/1711943831056.png" alt="1711943831056"  />
+</td>
+</tr>
+</tbody>
+</table>
+<p>User-type和Listing-type Embedding也是skip-gram model，然后针对应用场景做特定的优化。</p>
+<p><img loading="lazy" src="image/index/1711944397275.png" alt="1711944397275"  />
+</p>
+<h3 id="eges">EGES<a hidden class="anchor" aria-hidden="true" href="#eges">#</a></h3>
+<p><a href="https://arxiv.org/pdf/1803.02349.pdf">Billion-scale Commodity Embedding for E-commerce Recommendation in Alibaba</a></p>
+<p>将word2vec中文本序列的表达扩展到graph的表达，将多个用户的行为序列画在graph上，在graph上随机游走生成新的item序列（类比text context window），根据生成的item序列用Skip-gram学习item embedding表达。</p>
+<p><img loading="lazy" src="image/index/1711947825108.png" alt="1711947825108"  />
+</p>
+<h3 id="dssm">DSSM<a hidden class="anchor" aria-hidden="true" href="#dssm">#</a></h3>
+<p>各大厂里面有很多将双塔用于推荐召回的例子，其对应的loss和负采样方法都一定程度借鉴的word2vec。比如：</p>
+<ol>
+<li>Microsoft: <a href="https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/cikm2013_DSSM_fullversion.pdf">DSSM</a> 2013：DSSM用于文档检索</li>
+<li>Facebook: <a href="https://arxiv.org/abs/2006.11632">Embedding-based Retrieval in Facebook Search</a>, 2020：详细介绍了Facebook基于Embedding召回的工程实践</li>
+<li>Google Youtube: <a href="https://research.google/pubs/sampling-bias-corrected-neural-modeling-for-large-corpus-item-recommendations/">Sampling-bias-corrected neural modeling for large corpus item recommendations</a>, 2019：Youtube双塔召回</li>
+<li>Google Play: <a href="https://storage.googleapis.com/pub-tools-public-publication-data/pdf/b9f4e78a8830fe5afcf2f0452862fb3c0d6584ea.pdf">Mixed Negative Sampling for Learning Two-tower Neural Networks in Recommendations</a>, 2020：google play双塔召回</li>
+</ol>
+<p>关于DSSM用于召回本身有很多工程细节，需要单独一篇文章去讲解。双塔最基本的结构基本如下：Query和Document的Embedding可以对应word2vec的输入表达和输出表达矩阵，只是word2vec的输入表达和输出表达都是word，而双塔模型中可能是i2i，也可能是u2i。</p>
+<p><img loading="lazy" src="image/index/1711946775608.png" alt="1711946775608"  />
+</p>
+<p>不管如何，双塔模型的negative sampling和loss函数与word2vec很相似，比如：</p>
+<p>microsoft的dssm：negative sampled softmax loss，$ P(D|Q) = \frac{exp(\gamma R(Q,D))}{\sum_{D&rsquo; \in D} exp(\gamma R(Q,D&rsquo;))} $，就是sampled softmax loss，增加了温度超参数$\gamma$。</p>
+<h2 id="word2vec与llm">word2vec与LLM<a hidden class="anchor" aria-hidden="true" href="#word2vec与llm">#</a></h2>
+<p>BERT和GPT延续了word2vec表征一切的思路，用大数据pre-training就能得到NLP的非常好的表征。然后，只要针对具体业务场景的少量数据做fine-tuning就可以达到很不错的效果。BERT和GPT相比word2vec的主要优势在于，word2vec只考虑了单个词的表征，没有考虑词在不同上下文下的差异，比如 apple 在I have an apple laptop和I want eat apple里面含义是完全不同的，所以用于表征apple的embedding也应该是不同的。</p>
+<p>这里试着回答开头困惑的问题：</p>
+<blockquote>
+<p>GPT的输出是softmax，word2vec其实loss也是softmax loss。但为什么在word2vec里面的softmax就需要Negative sampling，而GPT里却不需要？</p>
+</blockquote>
+<p>答：因为word2vec里面softmax的分母，包含了输入表征和输出表征向量的inner product，且每次迭代都要计算V次，这才是计算量大的根源，复杂度$O(V*H^2)$；而GPT最后一层是lm_head（<a href="https://github.com/karpathy/nanoGPT/blob/325be85d9be8c81b436728a420e85796c57dba7e/model.py#L133C41-L133C47">nn.Linear层</a>），假设lm_head前的隐藏层输出为H，词典大小为V，复杂度仅为O(VH)，自然可以直接计算softmax loss。</p>
+<h2 id="参考">参考<a hidden class="anchor" aria-hidden="true" href="#参考">#</a></h2>
+<ol>
+<li>Xin Rong. word2vec Parameter Learning Explained. 2016.</li>
+<li>Goldberg, Y. and Levy, O. (2014). word2vec explained: deriving mikolov et al.’s negativesampling word-embedding method. arXiv:1402.3722 [cs, stat]. arXiv: 1402.3722.</li>
+<li>Mikolov, T., Chen, K., Corrado, G., and Dean, J. (2013a). Efficient estimation of word representations in vector space. arXiv preprint arXiv:1301.3781.</li>
+<li>Mikolov, T., Sutskever, I., Chen, K., Corrado, G. S., and Dean, J. (2013b). Distributed representations of words and phrases and their compositionality. In Advances in Neural Information Processing Systems, pages 3111–3119.</li>
+<li>Grbovic, Mihajlo, and Haibin Cheng. &ldquo;Real-time personalization using embeddings for search ranking at airbnb.&rdquo;  <em>Proceedings of the 24th ACM SIGKDD international conference on knowledge discovery &amp; data mining</em> . 2018.</li>
+<li>nanoGPT. <a href="https://github.com/karpathy/nanoGPT/blob/325be85d9be8c81b436728a420e85796c57dba7e/model.py#L138C60-L138C107">https://github.com/karpathy/nanoGPT/blob/325be85d9be8c81b436728a420e85796c57dba7e/model.py#L138C60-L138C107</a></li>
+</ol>
+
+
+  </div>
+
+  <footer class="post-footer">
+    <ul class="post-tags">
+    </ul>
+<nav class="paginav">
+  <a class="prev" href="http://localhost:1313/posts/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0%E5%BB%BA%E6%A8%A1%E5%A6%82%E4%BD%95%E8%9E%8D%E5%85%A5%E5%85%88%E9%AA%8C%E4%BF%A1%E6%81%AF/">
+    <span class="title">« Prev</span>
+    <br>
+    <span>机器学习建模——如何融入先验信息</span>
+  </a>
+  <a class="next" href="http://localhost:1313/posts/%E8%B6%85%E9%95%BF%E8%A1%8C%E4%B8%BA%E5%BA%8F%E5%88%97%E5%BB%BA%E6%A8%A1sdim/">
+    <span class="title">Next »</span>
+    <br>
+    <span>超长行为序列建模SDIM</span>
+  </a>
+</nav>
+
+  </footer>
+</article>
+    </main>
+    
+<footer class="footer">
+    <span>&copy; 2024 <a href="http://localhost:1313/">Monkeyzx</a></span>
+    <span>
+        Powered by
+        <a href="https://gohugo.io/" rel="noopener noreferrer" target="_blank">Hugo</a> &
+        <a href="https://github.com/adityatelange/hugo-PaperMod/" rel="noopener" target="_blank">PaperMod</a>
+    </span>
+</footer>
+<a href="#top" aria-label="go to top" title="Go to Top (Alt + G)" class="top-link" id="top-link" accesskey="g">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentColor">
+        <path d="M12 6H0l6-6z" />
+    </svg>
+</a>
+
+<script>
+    let menu = document.getElementById('menu')
+    if (menu) {
+        menu.scrollLeft = localStorage.getItem("menu-scroll-position");
+        menu.onscroll = function () {
+            localStorage.setItem("menu-scroll-position", menu.scrollLeft);
+        }
+    }
+
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener("click", function (e) {
+            e.preventDefault();
+            var id = this.getAttribute("href").substr(1);
+            if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView({
+                    behavior: "smooth"
+                });
+            } else {
+                document.querySelector(`[id='${decodeURIComponent(id)}']`).scrollIntoView();
+            }
+            if (id === "top") {
+                history.replaceState(null, null, " ");
+            } else {
+                history.pushState(null, null, `#${id}`);
+            }
+        });
+    });
+
+</script>
+<script>
+    var mybutton = document.getElementById("top-link");
+    window.onscroll = function () {
+        if (document.body.scrollTop > 800 || document.documentElement.scrollTop > 800) {
+            mybutton.style.visibility = "visible";
+            mybutton.style.opacity = "1";
+        } else {
+            mybutton.style.visibility = "hidden";
+            mybutton.style.opacity = "0";
+        }
+    };
+
+</script>
+<script>
+    document.getElementById("theme-toggle").addEventListener("click", () => {
+        if (document.body.className.includes("dark")) {
+            document.body.classList.remove('dark');
+            localStorage.setItem("pref-theme", 'light');
+        } else {
+            document.body.classList.add('dark');
+            localStorage.setItem("pref-theme", 'dark');
+        }
+    })
+
+</script>
+<script>
+    document.querySelectorAll('pre > code').forEach((codeblock) => {
+        const container = codeblock.parentNode.parentNode;
+
+        const copybutton = document.createElement('button');
+        copybutton.classList.add('copy-code');
+        copybutton.innerHTML = 'copy';
+
+        function copyingDone() {
+            copybutton.innerHTML = 'copied!';
+            setTimeout(() => {
+                copybutton.innerHTML = 'copy';
+            }, 2000);
+        }
+
+        copybutton.addEventListener('click', (cb) => {
+            if ('clipboard' in navigator) {
+                navigator.clipboard.writeText(codeblock.textContent);
+                copyingDone();
+                return;
+            }
+
+            const range = document.createRange();
+            range.selectNodeContents(codeblock);
+            const selection = window.getSelection();
+            selection.removeAllRanges();
+            selection.addRange(range);
+            try {
+                document.execCommand('copy');
+                copyingDone();
+            } catch (e) { };
+            selection.removeRange(range);
+        });
+
+        if (container.classList.contains("highlight")) {
+            container.appendChild(copybutton);
+        } else if (container.parentNode.firstChild == container) {
+            
+        } else if (codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.nodeName == "TABLE") {
+            
+            codeblock.parentNode.parentNode.parentNode.parentNode.parentNode.appendChild(copybutton);
+        } else {
+            
+            codeblock.parentNode.appendChild(copybutton);
+        }
+    });
+</script>
+</body>
+
+</html>
