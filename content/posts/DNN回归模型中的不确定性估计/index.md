@@ -20,7 +20,7 @@ Jerry.ai是一家欧美主营车险的中介平台，对接几十家车险公司
 
 ## 回归建模的不确定性估计
 
-#### 1. 预测期望值并提供固定范围
+### 1. 预测期望值并提供固定范围
 
 模型仅预测价格的期望值，采用MSELoss，并提供一个固定的预测范围（例如，-10% 到 10%）来约束模型的应用。
 
@@ -28,7 +28,7 @@ $$
 \hat{y}±10\%
 $$
 
-#### 2. 高斯回归（Gaussian Regression）
+### 2. 高斯回归（Gaussian Regression）
 
 该方法假设预测服从高斯分布，模型同时输出均值（$\mu$）和方差（$\sigma^2$）。损失函数基于最大似然估计，计算高斯分布的NLL（Negative Log Likelihood）Loss：
 
@@ -71,7 +71,7 @@ def gaussian_nll_loss(y_pred, y_pred_logvar, y_true):
     return nll.mean()
 ```
 
-#### 3. 使用分位数损失（Quantile Loss）
+### 3. 使用分位数损失（Quantile Loss）
 
 Gaussian NLL Loss的问题是均值和方差一般不在一个尺度（比如，目标均值可能在0附近，但是方差可能很大），训练的稳定性较差（实际实验效果也是如此）。相比而言，Quantile Loss的训练会稳定很多，且具有Model Ensemble的效果，作为我们最终的方案被采用。我们可以通过Quantile Loss/Pinball Loss，输出第5和第95百分位数点，以提供预测的不确定性信息。分位数q的损失的计算方式如下：
 $$
@@ -139,12 +139,12 @@ def quantile_loss(y_pred, y_true, quantiles=0.5, normalize=True):
 
 下图是Normalized Quantile Loss（右）和Vanilla Quantile Loss（左）的对比，横轴是真实目标值，红色点是预估均值分布，蓝色点是预估宽度分布，会发现修正后表现目标值越大区间宽度才越大。但这也可能一种顾此失彼的调整，因为目标值比较大的时候，对应的预估宽度会比Vanilla Quantile Loss的要大，可能需要根据业务需求进行取舍，我也在进一步的研究中。
 
-![](img2.png)
+![](assets/img2.png)
 
-#### 4. 效果对比
+### 4. 效果对比
 如下是规则系统（Baseline）、MSE Loss（ML Model - Point）和Quantile Loss的对比，横轴是预估区间宽度，纵轴是PICP即真实值落在区间的精度。
 
-![](performance.png)
+![](assets/performance.png)
 
 ## 其他问题
 
