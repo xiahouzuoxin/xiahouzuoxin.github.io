@@ -8,7 +8,7 @@ tags = []
 
 在之前的工作中负责过一段时间转化率的建模，这里对转化率建模的技术作一个简单梳理。
 
-![1716891101062](assets/1716891101062.png)
+![](assets/1716891101062.png)
 
 我把CVR建模中会遇到的主要问题分成3类（如图）：
 1. __多目标建模__：CTR建模的点击，一般意义上就是点了商品或者实际中的label是进入落地页（Detailed Page Viewed, DPV），目标相对非常明确；而对于转化，一般意义上是指下单/购买。但是在电商或直播的漏斗中，点击到转化的中间可能还会经历一长串的非串行的链路，比如传统电商转化前存在`加购、收藏、店铺关注、收银台落地页`等行为，在直播电商中有`观看时长、点赞、吸粉、收藏、从直播间进入商详情页`等行为，通过优化中间的一长串漏斗，能一定程度使得最终的转化目标更大化。因此，多目标建模是转化建模必备技术。
@@ -23,7 +23,7 @@ tags = []
 
 一旦涉及到多目标，无外乎就是`知识冲突`和`知识迁移`两个维度（如下图，绘制于2022年左右）。多目标除了共享参数带来信息增益之外，有些情况也会存在目标间冲突的问题，典型的就是CTR和CVR一起建模，一些猎奇商品点击率很高，但是转化很低。
 
-![1716891906879](assets/1716891906879.png)
+![](assets/1716891906879.png)
 
 为了解决**知识冲突**，主要从2方面着手：
 1. 多目标的网络结构：
@@ -31,26 +31,26 @@ tags = []
 - 腾讯的[PLE](https://github.com/tangxyw/RecSysPapers/blob/main/Multi-Task/%5B2020%5D%5BTencent%5D%5BPLE%5D%20Progressive%20Layered%20Extraction%20%28PLE%29%20-%20A%20Novel%20Multi-Task%20Learning%20%28MTL%29%20Model%20for%20Personalized%20Recommendations.pdf)：不同的目标不仅用不同的Gate，而且不同目标还有自己独有的Experts达到冲突进一步解耦；如果从Task Specific的视角看，MMoE的Specific是Gate，PLE的Specific是Gate和Experts。
 - 快手的[PEPNet](https://arxiv.org/abs/2302.01115)：既然可以Specific是Gate和Experts，那是不是还可以Task Specific的Features，PEPNet就是Specific的Feature，对输入加权，在模型的更浅层把冲突问题解决。
 
-![mmoe](./assets/mmoe.png)
+![](./assets/mmoe.png)
 
 2. 多目标优化：最早的比如[UWLoss](https://arxiv.org/abs/1705.07115)对多目标自适应加权，但它的假设是多目标独立，很多情况下这个假设就没法满足；从模型角度来说，所有冲突的来源都来自于梯度的影响。如[PCGrad](https://arxiv.org/abs/2001.06782)在训练时把梯度冲突部分裁剪掉，保证不同目标间的梯度正交。沿着PCGrad后续有很多对梯度进行优化的方法。
 
-![pcgrad](./assets/pcgrad.png)
+![](./assets/pcgrad.png)
 
 当然，多目标结构和多目标优化方法可以一起使用，但从个人实践的经验来看，从网络结构上进行信息解耦，这种从本质上进行冲突信息分流的方式一般更容易拿到效果。**保证每个任务有一个自己的与其他任务毫不相关的信息通路，保证冲突信息能从Task-specific的通路传递到loss**。
 
 为了实现**知识迁移**（即一个任务受益于另一个任务带来额外的提升）：
 1. 根据业务先验信息，进行Bayesian转移概率建模：[ESMM](https://arxiv.org/abs/1804.07931)/[ESM2](https://arxiv.org/abs/1910.07099)这种，ESM2在ESMM基础上对后链路的行为做了更多的分解，更复杂些的比如DBMTL；
 
-![esmm](./assets/esmm.png)
+![](./assets/esmm.png)
 
 2. 不直接通过转移概率乘积建模，建模目标间的`序关系`：典型的比如lazada的GMSL利用GRU建模，以及美团[AITM](https://arxiv.org/abs/2105.08489)都可以认为是类似这种；
 
-![aitm](./assets/aitm.png)
+![](./assets/aitm.png)
 
 3. 解决偏置问题：针对CVR的曝光空间选择偏差，引入因果推断IPW（Inverse Propensity Weighting），如[Multi-IPW/Multi-DR](https://arxiv.org/abs/1910.09337)，以及RecSys24 Tecent最近的[NISE](https://dl.acm.org/doi/pdf/10.1145/3640457.3688151)，他们的出发点都是认为ESMM依然存在选择偏差；
 
-![nise](./assets/nise.png)
+![](./assets/nise.png)
 
 4. NAS自动搜索模型结构：典型的[AutoHERI](https://dl.acm.org/doi/10.1145/3459637.3482061)在阿里妈妈场景下拿到了些效果，这种方向一般适合业务体量足够大的场景才去考虑，中小场景性价比不高。
 
@@ -102,7 +102,7 @@ dfm_loss_cvr = - (ikelyhood_pos + likelyhood_neg).mean()
 
 相比DFM的指数衰减先验，这篇Paper ESDF用一个单独的Tower建模延迟转化，替代了DFM种的指数先验约束。其中y是否点击、c是最终是否转化、D是点击-转化的延迟时间。相比DFM的优点是不需要数据先验。
 
-![1716977902448](assets/1716977902448.png)
+![](assets/1716977902448.png)
 
 通过多目标进行延迟反馈建模的其他类似方案：
 - MMDFM：https://mp.weixin.qq.com/s/VosvjdSn6c-qhOYeFBEqUQ

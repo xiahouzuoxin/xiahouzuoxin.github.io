@@ -25,7 +25,7 @@ tags = ['Recommendation', 'Long Behavior Sequence']
 
 Paper: [Search-based User Interest Modeling with Lifelong Sequential Behavior Data for Click-Through Rate Prediction](https://arxiv.org/pdf/2006.05639.pdf%5C%5B13%5C%5D)
 
-![1711016019443](image/index/1711016019443.png)
+![](image/index/1711016019443.png)
 
 SIM是Two-stage Model， 包括GSU和ESU阶段。注意，主结构中依然保留了User short-time behaviors的输入，在短时序的基础上做增量，毕竟最近的行为序列才是最重要的。
 
@@ -80,10 +80,10 @@ $$
 
 针对问题1，原文离线实验发现soft-search和hard-search效果差不多（soft-search好2个千分点），最终选择上线上线hard-search + timeinfo；
 
-![1711022881852](image/index/1711022881852.png)
+![](image/index/1711022881852.png)
 
 针对问题2，把用户长行为序列建成KKV索引（Key-Key-Value）——User Behavior Tree，提前存储到数据库，模型在线hard-search直接从数据库中根据Key=user_id, Key=target_category索引得到ESU的输入topK；且通过索引的构建之后，hard-search的O(k)时间复杂度直接缩短到O(1)即在线serving长时序基本没有额外的开销。
 
-![1711023710900](image/index/1711023710900.png)
+![](image/index/1711023710900.png)
 
 另外，其实对于soft-search的上线，检索过程可以完全复用召回倒排索引（Inverted index）的框架。
