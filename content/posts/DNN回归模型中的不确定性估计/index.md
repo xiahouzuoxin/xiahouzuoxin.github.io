@@ -31,20 +31,25 @@ $$
 #### 2. 高斯回归（Gaussian Regression）
 
 该方法假设预测服从高斯分布，模型同时输出均值（$\mu$）和方差（$\sigma^2$）。损失函数基于最大似然估计，计算高斯分布的NLL（Negative Log Likelihood）Loss：
-$$
-\mathcal{L}(y \,|\, \mu, \sigma) = -\log \left( \frac{1}{\sqrt{2\pi\sigma^2}} \exp \left( -\frac{(y - \mu)^2}{2\sigma^2} \right) \right)
 
+$$
+\mathcal{L}(y|\mu,\sigma) 
+= -\log \left( \frac{1}{\sqrt{2\pi\sigma^2}} \exp \left( -\frac{(y - \mu)^2}{2\sigma^2} \right) \right)
 = \frac{1}{2} \log(2\pi) + \log(\sigma) + \frac{(y - \mu)^2}{2\sigma^2}
 $$
-在实践中，我们通常会忽略常数项 $\frac{1}{2} \log(2\pi)$，因为它不影响最终的优化，且为了数值稳定性，通常是让DNN输出$log{\sigma^2}$：
+
+在实践中，我们通常会忽略常数项 $\frac{1}{2} \log(2\pi)$，因为它不影响最终的优化，且为了数值稳定性，通常是让DNN输出 $log{\sigma^2}$：
+
 $$
-\Rightarrow \min 0.5 * \left( \log \sigma^2 + \frac{(y - \mu)^2}{\sigma^2} \right)
+\min 0.5 * \left( \log \sigma^2 + \frac{(y - \mu)^2}{\sigma^2} \right)
 $$
 
 当进行预测时，我们可以根据模型的输出（期望值 $u(x)$ 和标准差 $\sigma(x)$），以及希望输出的置信区间，来构造预测的区间：
+
 $$
 [u(x) - z_a \sigma(x), u(x) + z_a \sigma(x)]
 $$
+
 其中 $z_a$ 是与所需置信水平相关的标准正态分布分位数（例如，对于95%的置信区间，$z_a \approx 1.96$）。
 
 ```python
@@ -141,7 +146,9 @@ def quantile_loss(y_pred, y_true, quantiles=0.5, normalize=True):
 
 ![](performance.png)
 
-### 关于DNN回归模型中的Dropout
+## 其他问题
+
+#### DNN回归模型中的Dropout
 
 我们都知道Dropout是现在DNN模型的标配，但是到回归模型中，引入dropout说不定会有一些问题。我把dropout去掉才达到稳定的效果提升。
 
@@ -150,9 +157,6 @@ def quantile_loss(y_pred, y_true, quantiles=0.5, normalize=True):
 2. Effect of Dropout Layer on Classical Regression Problems 论文通过实验验证了上述结论
 3. [R-Drop](https://zhida.zhihu.com/search?content_id=252533465&content_type=Article&match_order=1&q=R-Drop&zhida_source=entity): Regularized Dropout for Neural Networks 论文提出了一种改进方法，有效缓解了分类任务中dropout导致的训练-验证不一致问题
 
-### 参考
-
-1. https://zhuanlan.zhihu.com/p/17557199827
 
 
 
