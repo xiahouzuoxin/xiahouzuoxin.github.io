@@ -1,5 +1,5 @@
 +++
-title = 'LTV Prediction In Installment Scenarios By An End to End Deep Learning Model'
+title = 'LTV Prediction Model In Installment Scenarios'
 date = 2025-09-24T12:58:00+08:00
 draft = false
 math = true
@@ -77,7 +77,7 @@ Our method builds on the principles of end-to-end learning of one-stage model bu
 
 The architecture is designed to make a unique prediction for each future month by combining static user features with dynamic temporal features.
 
-![Model Framework](image_20250924142400.png)
+![Model Framework](assets/image_20250924142400.png)
 
 
 The model's logic can be broken down into five key steps:
