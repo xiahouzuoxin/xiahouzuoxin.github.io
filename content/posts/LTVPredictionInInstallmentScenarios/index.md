@@ -69,9 +69,9 @@ f(m) = a \cdot \left(1 - e^{-bm}\right) + c + d m
 $$
 The model returns the _per-month forecasted revenue/commission_ for months 1..M as `output`, along with the latent coefficients. This `exponential` component can be viewed as a prior or baseline forecast of commission trajectories. But it suffers from the limitations of exponential pri-knowledge, where most of the scenarios are not satisfied.
 
-## Our Method
+## 3. Our Method
 
-Our method builds on the principles of end-to-end learning but is tailored to produce an LTV trajectory for installment scenarios. The core idea is to model the fundamental, month-over-month survival process of a customer and use it to derive the full LTV curve. The model jointly learns retention probabilities and the resulting LTV in a single pass.
+Our method builds on the principles of end-to-end learning of one-stage model but refered the 2 stage method in installment scenarios. The core idea is to model the fundamental, month-over-month survival process of a customer and use it to derive the full LTV curve. The model jointly learns retention probabilities and the resulting LTV in a single pass.
 
 #### Model Architecture
 
@@ -119,7 +119,3 @@ To further enhance accuracy and correct for any systematic biases in the model's
 $$ \text{pLTV}'_M = w_c \cdot \text{pLTV}_M + b_c \cdot M $$
 
 This step allows the model to globally scale or shift the predicted LTV curve for a user, providing an extra degree of freedom to better fit the ground truth data. The weights and biases are constrained to be non-negative to ensure plausible financial interpretations.
-
-### Conclusion
-
-Predicting a customer's LTV trajectory is a sophisticated task that offers immense business value. The proposed end-to-end model provides a robust and flexible solution specifically for installment-based scenarios. By modeling the fundamental driver of value—month-over-month retention—and directly deriving the LTV curve, it captures complex user behaviors and provides the granular, forward-looking insights needed for precise financial planning and strategic decision-making. This approach represents a significant step forward from single-point LTV estimates, empowering businesses with a dynamic and comprehensive view of their customers' future worth.
