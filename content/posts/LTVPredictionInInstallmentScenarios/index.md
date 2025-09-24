@@ -77,7 +77,7 @@ Our method builds on the principles of end-to-end learning but is tailored to pr
 
 The architecture is designed to make a unique prediction for each future month by combining static user features with dynamic temporal features.
 
-![[image_20250924142400.png]]
+![Model Framework](image_20250924142400.png)
 
 
 The model's logic can be broken down into five key steps:
