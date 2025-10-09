@@ -18,9 +18,11 @@ tags = ['Machine Learning', 'LLM']
 LLM的输出是vocab维度的预测概率分布，$P(x_t | x_1, x_2, ..., x_{t-1})$, 在预测阶段，需要根据这个概率分布生成文本序列，解码（decoding）策略是从模型预测分布中**选择下一个 token** 的过程。
 
 模型输出的 logits 通过 softmax 转化为概率分布：
+
 $$
 P(x_t | x_{<t}) = \frac{e^{z_t}}{\sum_j e^{z_j}}
 $$
+
 针对这个概率分布的输出，选择下一个token的策略总体上分为：
 
 - **确定性策略**：
@@ -28,7 +30,7 @@ $$
 	- Beam Search: 综合考虑所有候选序列，选择概率最大候选序列，结果也是确定的
 - **Sampling**：根据概率分布随机采样
 	- Top-k:
-		- 只保留概率最高的k个 tokens，$S_k​={x_i​:x_i​\ \in\ TopK}$
+		- 只保留概率最高的k个 tokens，$S_k​={x_i​:x_i​ \in TopK}$
 		- 对候选集合重新归一化再采样，$x_t​∼Categorical(S_k​)$ 
 		- Top-k可以避免非常荒谬的输出
 	- Top-p（_Nucleus Sampling_）: 
@@ -61,7 +63,7 @@ $$y^* = \arg\max_{y_{1:T}} P(y_{1:T} \mid x)$$
 
 于是可以使用 **Beam Search** —— 一种在 “搜索效率” 和 “全局最优性” 之间折中的方法。
 
-### Beam Search 基本计算步骤
+### Beam Search计算步骤
 
 设：
 - beam 搜索宽度为 B
@@ -89,11 +91,14 @@ $$\text{Beam}_t = \text{TopB}\big(\log P(y_{1:t})\big)$$
 
 到达最大长度 T 或所有 beam 都以 EOS 结尾时，选出完成候选中概率最高（或长度归一化后最高）的序列。
 
-## Sampling with Temperature
+![beamsearch](assets/beamsearch.png)
+
+## Top-p/Top-p Sampling with Temperature
 
 Temperature开始是在Hinton的蒸馏模型中出现，通过temperature参数可以控制输出分布的差异化程度。T越小，输出的概率分布越尖锐，否则T越大输出分布越平缓。
 
 原理是在logit计算softmax的时候，增加温度参数T，做温度缩放：
+
 $$
 P(x_t | x_{<t}) = \frac{e^{z_t/T}}{\sum_j e^{z_j/T}}
 $$
