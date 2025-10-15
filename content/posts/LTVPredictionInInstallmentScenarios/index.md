@@ -8,7 +8,11 @@ tags = ['ML']
 
 ## 1. Background
 
-In many businesses with recurring payments—e.g. installment plans, subscription services, financing, insurance renewals etc.—one key task is to estimate the _lifetime value_ (LTV) of a customer. In your setting, because the cash flows accrue monthly (or at some periodic cadence), you may want to estimate the **predicted LTV at the end of each month**, and potentially project out over a long horizon (e.g. 5 years). We call this **pLTV** (predicted lifetime value).
+In many businesses with recurring payments—e.g. installment plans, subscription services, financing, insurance renewals etc.—one key task is to estimate the _lifetime value_ (LTV) of a customer. We call this **pLTV** (predicted lifetime value). For why we need to estimate LTV:
+1. With pLTV, we can acquire more valuable new users from advertise platforms (e.g. Google Ads, Meta Ads etc.)
+2. With pLTV, our financial team can estimate the company's cash flow in the near future and make better decisions
+
+In our setting, because the cash flows accrue monthly (or at some periodic cadence), we may want to estimate the **predicted LTV at the end of each month**, and potentially project out over a long horizon (e.g. 5 years). 
 
 In particular, the goals are:
 
@@ -63,10 +67,14 @@ Beyond ZILN, there are more recent advances in modeling uncertainty, long-horizo
     
 - [_ADSNet: Cross-Domain LTV Prediction_(2024)](https://arxiv.org/abs/2406.10517) addresses the domain shift challenge when combining internal and external data sources, using a Siamese network and domain adaptation techniques.
 
-And also some cases where applied pri-knowledge to modeling the LTV directly. For example, an `exponential` function or survival function, by given the input features $x$ and retention month $m$, the `exponential` function should like:
+#### Exponential or Survival Model
+
+To model the revenue sequence and to keep the monotonicity, we applied pri-knowledge to modeling the LTV directly. For example, an `exponential` function or survival function, by given the input features $x$ and retention month $m$, then we fitting the `exponential` function, which like:
+
 $$
 f(m) = a \cdot \left(1 - e^{-bm}\right) + c + d m
 $$
+
 The model returns the _per-month forecasted revenue/commission_ for months 1..M as `output`, along with the latent coefficients. This `exponential` component can be viewed as a prior or baseline forecast of commission trajectories. But it suffers from the limitations of exponential pri-knowledge, where most of the scenarios are not satisfied.
 
 ## 3. Our Method
@@ -110,7 +118,7 @@ The pLTV at the end of any month $M$ is simply the cumulative sum of all expecte
 
 $$ \text{pLTV}_M = \sum_{m=1}^{M} E[V_m] = \sum_{m=1}^{M} \left( \left( \prod_{i=1}^{m} p_i \right) \cdot V_m \right) $$
 
-This final output is a vector $[\text{pLTV}_1, \text{pLTV}_2, \dots, \text{pLTV}_{\text{max}}]$, providing the estimated cumulative value at each future month-end.
+This final output is a vector $[\text{pLTV}_1, \text{pLTV}_2, \dots, \text{pLTV}_{M}]$, providing the estimated cumulative value at each future month-end.
 
 **Step 5: Optional Post-Hoc Calibration**
 
@@ -119,3 +127,9 @@ To further enhance accuracy and correct for any systematic biases in the model's
 $$ \text{pLTV}'_M = w_c \cdot \text{pLTV}_M + b_c \cdot M $$
 
 This step allows the model to globally scale or shift the predicted LTV curve for a user, providing an extra degree of freedom to better fit the ground truth data. The weights and biases are constrained to be non-negative to ensure plausible financial interpretations.
+
+## Summmary
+
+We proposed an end-to-end model to modeling the pLTV trajectory with months' monotonicity kept of each users in the installment scenarios. It:
+1. Replaced our the 2-stage model, reduced lots of our maintainance work on the pLTV estimation system
+2. Improved both the individual RMSE and the User Group LTV Ranking Accuracy in our application

@@ -3,7 +3,7 @@ title = '控制模型创造力的艺术——LLM Decoding策略解析'
 date = 2024-07-05T10:55:30+08:00
 draft = false
 math = true
-tags = ['Machine Learning', 'LLM']
+tags = ['ML', 'LLM']
 +++
 
 

@@ -3,7 +3,7 @@ title = 'ML建模如何融入先验信息'
 date = 2024-05-05T20:23:00+08:00
 draft = false
 math = true
-tags = ['Machine Learning','Uplift']
+tags = ['ML','Uplift']
 +++
 
 ## 背景
