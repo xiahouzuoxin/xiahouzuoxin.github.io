@@ -82,7 +82,7 @@ $$\text{Beam}_1 = \text{TopB}\big( P(y_1 \mid x) \big)$$
 在时间步 t>1：
 1. 对每个当前 beam（长度为 t−1的部分序列）扩展所有可能的下一个 token：
 $$\text{候选集合} = \{(y_{1:t-1}^{(b)}, y_t) \mid b=1,\dots,B,\; y_t \in V\}$$
-2. 对所有候选计算累积 log 概率（为什么用log add？因为如果采用概率乘的方式有可能导致数据进度溢出问题）：    $$\log P(y_{1:t}) = \log P(y_{1:t-1}) + \log P(y_t \mid y_{1:t-1}, x)$$
+2. 对所有候选计算累积 log 概率（为什么用log add？因为如果采用概率乘的方式有可能导致数据精度溢出问题）：    $$\log P(y_{1:t}) = \log P(y_{1:t-1}) + \log P(y_t \mid y_{1:t-1}, x)$$
 3. 从这些候选中选出前 B 个最高概率的序列，作为新的 beam：
 $$\text{Beam}_t = \text{TopB}\big(\log P(y_{1:t})\big)$$
 4. 如果某个 beam 生成了 EOS（结束符），则将其从活跃 beam 中移除，放入完成候选集中。
@@ -94,7 +94,7 @@ $$\text{Beam}_t = \text{TopB}\big(\log P(y_{1:t})\big)$$
 Beam Search本质是在一颗树上搜索的过程，
 ![beamsearch](assets/beamsearch.png)
 
-## Top-p/Top-p Sampling with Temperature
+## Top-k/Top-p Sampling with Temperature
 
 Temperature开始是在Hinton的蒸馏模型中出现，通过temperature参数可以控制输出分布的差异化程度。T越小，输出的概率分布越尖锐，否则T越大输出分布越平缓。
 

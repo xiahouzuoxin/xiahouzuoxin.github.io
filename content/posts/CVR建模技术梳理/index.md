@@ -3,7 +3,7 @@ title = 'CVR建模技术梳理'
 date = 2024-05-28T17:49:08+08:00
 draft = false
 math = false
-tags = []
+tags = ['ML', 'Recommendation']
 +++
 
 在之前的工作中负责过一段时间转化率的建模，这里对转化率建模的技术作一个简单梳理。
