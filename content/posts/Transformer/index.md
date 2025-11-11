@@ -14,4 +14,6 @@ tags = ['ML', 'LLM']
 - 参考素材有哪些？
 > PPT的截图和代码来源主要包括：原始论文、网上的公开书籍、图片部分ChatGPT生成，部分自己绘制，PPT内都附链接。
 
+[Transformer.pdf](Transformer.pdf)
+
 {{< pdfReader "Transformer.pdf" >}}
