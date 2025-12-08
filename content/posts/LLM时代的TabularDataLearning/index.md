@@ -1,7 +1,7 @@
 +++
 title = '漫谈LLM时代的表格数据学习(TDL)'
 date = 2025-12-08T16:27:51+08:00
-draft = true
+draft = false
 math = false
 tags = []
 +++
