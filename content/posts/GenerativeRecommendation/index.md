@@ -1,7 +1,7 @@
 +++
 title = 'Generative Recommendation'
 date = 2026-05-07T18:36:39+08:00
-draft = true
+draft = false
 mermaid = true
 math = true
 tags = []
