@@ -130,6 +130,7 @@ params:
     #     keys: ["title", "permalink", "summary", "content"]
 
     math: true
+    mermaid: true
 
 markup:
     goldmark:

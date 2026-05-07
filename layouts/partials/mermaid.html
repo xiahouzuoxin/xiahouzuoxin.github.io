@@ -1,0 +1,33 @@
+<script type="module">
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.esm.min.mjs';
+
+const getTheme = () => {
+    if (localStorage.getItem('pref-theme') === 'dark') return 'dark';
+    if (localStorage.getItem('pref-theme') === 'light') return 'default';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'default';
+};
+
+const render = (theme) => {
+    mermaid.initialize({ startOnLoad: false, theme });
+    mermaid.run({ querySelector: '.mermaid:not([data-processed])' });
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Save original source before mermaid transforms the element
+    document.querySelectorAll('.mermaid').forEach(el => {
+        el.dataset.src = el.textContent;
+    });
+
+    render(getTheme());
+
+    // Re-render when PaperMod toggles dark/light mode
+    new MutationObserver(() => {
+        const theme = document.body.classList.contains('dark') ? 'dark' : 'default';
+        document.querySelectorAll('.mermaid').forEach(el => {
+            el.removeAttribute('data-processed');
+            el.textContent = el.dataset.src;
+        });
+        render(theme);
+    }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+});
+</script>
