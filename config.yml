@@ -7,7 +7,7 @@ theme: PaperMod
 enableInlineShortcodes: true
 enableRobotsTXT: true
 buildDrafts: false
-buildFuture: false
+buildFuture: true
 buildExpired: false
 enableEmoji: true
 pygmentsUseClasses: true

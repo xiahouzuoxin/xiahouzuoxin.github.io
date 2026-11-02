@@ -1,6 +1,6 @@
 +++
 title = '我用Codex写了Richer和HuTV两个App'
-date = 2026-11-02T20:00:00+08:00
+date = 2026-11-02T18:00:00+08:00
 draft = false
 tags = ['AI', 'Coding']
 +++
