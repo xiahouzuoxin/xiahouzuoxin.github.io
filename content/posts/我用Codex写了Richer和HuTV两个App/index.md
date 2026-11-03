@@ -14,6 +14,7 @@ AI技术发展太快了，从去年底到年初开始就有想用AI直接实现�
 基于自己的实际需求，我决定用AI实现这两个App。最终结果，一个是Mac上的翻译/润色软件Richer，另一个是iPhone/iPad上订阅看剧客户端HuTV：
 
 - HuTV: [https://github.com/xiahouzuoxin/HuTV](https://github.com/xiahouzuoxin/HuTV)
+  - HuTV Web: [https://hutv-web.hutv-web.workers.dev/](https://hutv-web.hutv-web.workers.dev/)
 - Richer: [https://github.com/xiahouzuoxin/Richer](https://github.com/xiahouzuoxin/Richer)
 
 首先，实际体验上来说：
@@ -34,6 +35,7 @@ AI确实在革新人类开发应用的方式，尤其是工具类 -- 每个人�
 > - Codex Session累计Token消耗 ~ 2.71 亿，按API算$150左右，实际订阅成本更低
 > - Iphone 17Pro Simulator，真机Ipad 2018
 > - 也有些麻烦的地方，不好上架Apple Store，主要是涉及视频版权相关问题。所以要安装到Iphone和Ipad上使用，需要通过脚本打包未签名IPA并使用比如Sideloadly等方式实现自刷新
+> 更新2026-11-03：用AI帮忙新增了[Web端](https://hutv-web.hutv-web.workers.dev/)，除了关联自己的cloudflare账号，部署过程全部GPT自动完成
 
 iPhone / iPad 原生视频订阅客户端，Swift + SwiftUI 实现。
 
