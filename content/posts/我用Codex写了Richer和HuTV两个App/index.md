@@ -5,19 +5,20 @@ draft = false
 tags = ['AI', 'Coding']
 +++
 
-AI技术发展太快了，从去年底到年初开始就有想用AI直接实现自己App的想法。先说下我的背景：
+AI技术发展太快了，从去年底开始就有想法说用AI直接实现独属于自己App。先说下我的背景：
 
 - 我之前没有做过任何应用/网站（包括前端、后端开发）的经历，没接触甚至不知道Mac/IOS开发需要用什么语言
-- 自己外企工作经常要英语沟通，经常需要读写comments/email，有时就会Copy到GPT让它翻译以及优化表达
-- 我老婆喜欢看剧，之前给她Android装了个TVBox用着很爽。奈何Iphone没有对应的App，家里还有个闲置的老Ipad 2018，刚好也想用起来。话说用AI把家里的闲置用起来是个很好的思路。
+- 自己外企工作经常要英语沟通，经常需要读写comments/email，有时就会Copy到GPT让它翻译以及优化表达 ==> 所以我需要一个简单但有效的划词翻译/优化工具，我试了很多包括Bob/有道/欧路等用起来都不太顺手或没有LLM效果不好；
+- 我老婆喜欢看剧，之前给她Android装了个TVBox用着很爽。奈何Iphone没有对应的App，家里还有个闲置的老Ipad 2018，刚好也想用起来。话说**用AI把家里的闲置用起来是个很好的思路**。
 
-基于自己的实际需求，我决定用AI实现这两个App。最终结果，一个是Mac上的翻译/润色软件Richer，另一个是iPhone/iPad上订阅看剧客户端HuTV：
+基于自己的实际需求，我决定用AI实现这两个App。最终的结果，一个是Mac上的翻译/润色软件Richer，另一个是iPhone/iPad上订阅看剧客户端HuTV：
 
-- HuTV: [https://github.com/xiahouzuoxin/HuTV](https://github.com/xiahouzuoxin/HuTV)
-  - HuTV Web: [https://hutv-web.hutv-web.workers.dev/](https://hutv-web.hutv-web.workers.dev/)
+- HuTV
+  - iphone/ipad app: [https://github.com/xiahouzuoxin/HuTV](https://github.com/xiahouzuoxin/HuTV)
+  - Web端: [https://hutv-web.hutv-web.workers.dev/](https://hutv-web.hutv-web.workers.dev/)
 - Richer: [https://github.com/xiahouzuoxin/Richer](https://github.com/xiahouzuoxin/Richer)
 
-首先，实际体验上来说：
+实际体验上来说：
 
 - **App体验特别特别棒，超级爽**，可能因为都是直接按自己的需求做的。Richer个人体验比Bob更好，从开发出来到现在几乎每天自己都在用，HuTV也比TVBox/影视仓更符合我的使用习惯。
 - 整个过程（迭代了几次）我没有改过/读过任何一行代码，包括最初的技术方案都是和AI讨论决定的
@@ -34,8 +35,8 @@ AI确实在革新人类开发应用的方式，尤其是工具类 -- 每个人�
 > - VSCode Codex插件，主要使用Codex GPT-6 Astra，偶尔5.6 Sol，整体开发效果差别不大
 > - Codex Session累计Token消耗 ~ 2.71 亿，按API算$150左右，实际订阅成本更低
 > - Iphone 17Pro Simulator，真机Ipad 2018
-> - 也有些麻烦的地方，不好上架Apple Store，主要是涉及视频版权相关问题。所以要安装到Iphone和Ipad上使用，需要通过脚本打包未签名IPA并使用比如Sideloadly等方式实现自刷新
-> 更新2026-11-03：用AI帮忙新增了[Web端](https://hutv-web.hutv-web.workers.dev/)，除了关联自己的cloudflare账号，部署过程全部GPT自动完成
+> - 上架Apple Store需要买ID，另外资源订阅涉及视频版权相关问题，所以不准备上架
+> - 2026-11-03更新：由于不上架，未签名IPA在Ipad/Iphone上使用每7天就得刷一下，于是用AI又帮忙新增了[在线Web端的HuTV](https://hutv-web.hutv-web.workers.dev/)，真个开发除了关联自己的cloudflare账号，写页面&部署过程全部GPT自动完成
 
 iPhone / iPad 原生视频订阅客户端，Swift + SwiftUI 实现。
 
@@ -53,7 +54,7 @@ iPhone / iPad 原生视频订阅客户端，Swift + SwiftUI 实现。
 > 开发碎碎念：
 > - VSCode Codex插件，前期主要GPT-4，最近更新少量GPT-6 Astra
 > - Mac app，完全它自己实现测试，很少人工干预
-> - 相比Iphone App，Mac安装自用比较容易，但由于权限（比如OCR翻译等）限制，暂时不好上架
+> - 相比Iphone App，Mac安装自用比较容易，但由于权限（比如OCR翻译等）限制，暂时也不准备去上架
 
 macOS 菜单栏写作/翻译助手，类似 Bob，但可以自由接入各种 LLM。
 
